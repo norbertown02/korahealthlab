@@ -2,6 +2,8 @@
 
 Aplicação web para publicar o dashboard do Kora Health Lab na internet, com URL privada, sincronização automática da EVO e banco histórico em Postgres.
 
+Status de publicação: ajuste de deploy em 22/08/2026 para forçar uma nova build da Vercel com a configuração corrigida.
+
 ## Arquitetura
 
 - `app/`
