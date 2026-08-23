@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from "@/lib/db";
 import { createHash } from "node:crypto";
 import type { DashboardPayload, EvoAggregatorCheckin, EvoEntry, EvoSale, SyncWindow } from "@/lib/types";
+import { buildDashboardPayload, periodWindow } from "@/lib/dashboard";
 
 type PersistPayload = {
   window: SyncWindow;
@@ -103,15 +104,36 @@ export async function persistSync(payload: PersistPayload) {
 
 export async function getLatestDashboard() {
   const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase
-    .from("dashboard_snapshots")
-    .select("payload")
-    .order("created_at", { ascending: false })
-    .limit(1);
+  const window = periodWindow();
+  const [entriesResult, aggregatorsResult, salesResult] = await Promise.all([
+    supabase
+      .from("fact_entries")
+      .select("raw_payload")
+      .gte("entry_date", window.dateStart)
+      .lte("entry_date", window.dateEnd)
+      .limit(10000),
+    supabase
+      .from("fact_aggregator_checkins")
+      .select("raw_payload")
+      .gte("checkin_date", window.dateStart)
+      .lte("checkin_date", window.dateEnd)
+      .limit(10000),
+    supabase
+      .from("fact_sales")
+      .select("raw_payload")
+      .gte("sale_date", window.dateStart)
+      .lte("sale_date", window.dateEnd)
+      .limit(10000)
+  ]);
 
-  if (error) {
-    throw error;
-  }
+  const error = entriesResult.error ?? aggregatorsResult.error ?? salesResult.error;
+  if (error) throw error;
 
-  return data?.[0]?.payload ?? null;
+  const entries = (entriesResult.data ?? []).map((row) => row.raw_payload) as EvoEntry[];
+  const aggregators = (aggregatorsResult.data ?? []).map((row) => row.raw_payload) as EvoAggregatorCheckin[];
+  const sales = (salesResult.data ?? []).map((row) => row.raw_payload) as EvoSale[];
+
+  if (!entries.length && !aggregators.length && !sales.length) return null;
+
+  return buildDashboardPayload(entries, aggregators, sales, window);
 }
