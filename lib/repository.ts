@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/db";
+import { createHash } from "node:crypto";
 import type { DashboardPayload, EvoAggregatorCheckin, EvoEntry, EvoSale, SyncWindow } from "@/lib/types";
 
 type PersistPayload = {
@@ -8,6 +9,16 @@ type PersistPayload = {
   aggregators: EvoAggregatorCheckin[];
   sales: EvoSale[];
 };
+
+function batches<T>(items: T[], size = 200) {
+  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
+    items.slice(index * size, index * size + size)
+  );
+}
+
+function sourceKey(source: string, payload: unknown) {
+  return `${source}:${createHash("sha256").update(JSON.stringify(payload)).digest("hex")}`;
+}
 
 export async function persistSync(payload: PersistPayload) {
   const supabase = getSupabaseAdmin();
@@ -25,50 +36,60 @@ export async function persistSync(payload: PersistPayload) {
   if (syncRunError) throw syncRunError;
 
   if (payload.entries.length) {
-    const { error } = await supabase.from("fact_entries").insert(
-      payload.entries.map((entry) => ({
-        id_member: entry.idMember ?? null,
-        member_name: entry.nameMember ?? entry.nameProspect ?? null,
-        entry_date: (entry.date ?? entry.dateTurn ?? "").slice(0, 10) || null,
-        entry_timestamp: entry.date ?? entry.dateTurn ?? null,
-        branch_id: entry.idBranch ?? null,
-        entry_type: entry.entryType ?? null,
-        device: entry.device ?? null,
-        raw_payload: entry
-      }))
-    );
-    if (error) throw error;
+    for (const batch of batches(payload.entries)) {
+      const { error } = await supabase.from("fact_entries").upsert(
+        batch.map((entry) => ({
+          source_key: sourceKey("entry", entry),
+          id_member: entry.idMember ?? null,
+          member_name: entry.nameMember ?? entry.nameProspect ?? null,
+          entry_date: (entry.date ?? entry.dateTurn ?? "").slice(0, 10) || null,
+          entry_timestamp: entry.date ?? entry.dateTurn ?? null,
+          branch_id: entry.idBranch ?? null,
+          entry_type: entry.entryType ?? null,
+          device: entry.device ?? null,
+          raw_payload: entry
+        })),
+        { onConflict: "source_key" }
+      );
+      if (error) throw error;
+    }
   }
 
   if (payload.aggregators.length) {
-    const { error } = await supabase.from("fact_aggregator_checkins").insert(
-      payload.aggregators.map((item) => ({
-        id_member: item.idMember ?? null,
-        member_name: item.name ?? null,
-        aggregator_name: item.aggregator ?? null,
-        checkin_date: item.checkinDate?.slice(0, 10) ?? null,
-        checkin_timestamp: item.checkinDate ?? null,
-        branch_id: item.checkinBranchId ?? null,
-        status: item.status ?? null,
-        raw_payload: item
-      }))
-    );
-    if (error) throw error;
+    for (const batch of batches(payload.aggregators)) {
+      const { error } = await supabase.from("fact_aggregator_checkins").upsert(
+        batch.map((item) => ({
+          source_key: sourceKey("aggregator", item),
+          id_member: item.idMember ?? null,
+          member_name: item.name ?? null,
+          aggregator_name: item.aggregator ?? null,
+          checkin_date: item.checkinDate?.slice(0, 10) ?? null,
+          checkin_timestamp: item.checkinDate ?? null,
+          branch_id: item.checkinBranchId ?? null,
+          status: item.status ?? null,
+          raw_payload: item
+        })),
+        { onConflict: "source_key" }
+      );
+      if (error) throw error;
+    }
   }
 
   if (payload.sales.length) {
-    const { error } = await supabase.from("fact_sales").upsert(
-      payload.sales.map((sale) => ({
-        id_sale: sale.idSale,
-        id_member: sale.idMember ?? null,
-        branch_id: sale.idBranch ?? null,
-        sale_date: sale.saleDate?.slice(0, 10) ?? sale.saleDateServer?.slice(0, 10) ?? null,
-        sale_timestamp: sale.saleDate ?? sale.saleDateServer ?? null,
-        raw_payload: sale
-      })),
-      { onConflict: "id_sale" }
-    );
-    if (error) throw error;
+    for (const batch of batches(payload.sales)) {
+      const { error } = await supabase.from("fact_sales").upsert(
+        batch.map((sale) => ({
+          id_sale: sale.idSale,
+          id_member: sale.idMember ?? null,
+          branch_id: sale.idBranch ?? null,
+          sale_date: sale.saleDate?.slice(0, 10) ?? sale.saleDateServer?.slice(0, 10) ?? null,
+          sale_timestamp: sale.saleDate ?? sale.saleDateServer ?? null,
+          raw_payload: sale
+        })),
+        { onConflict: "id_sale" }
+      );
+      if (error) throw error;
+    }
   }
 
   const { error: snapshotError } = await supabase.from("dashboard_snapshots").insert({
