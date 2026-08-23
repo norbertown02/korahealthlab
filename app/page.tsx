@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-shell";
+import { ManualSyncButton } from "@/components/manual-sync-button";
 import { getLatestDashboard } from "@/lib/repository";
 import type { DashboardPayload } from "@/lib/types";
 
@@ -22,9 +23,10 @@ export default async function HomePage() {
           <div className="eyebrow">Kora Health Lab • BI online</div>
           <h1>Aplicação pronta. Falta só a primeira sincronização.</h1>
           <p className="hero-copy">
-            Configure o banco, as variáveis de ambiente e chame <code>/api/sync</code> para popular o dashboard com dados reais.
+            A conexão está pronta. Use a sincronização abaixo para trazer os dados reais da EVO para o dashboard.
           </p>
           {setupMessage ? <p className="hero-copy">{setupMessage}</p> : null}
+          <ManualSyncButton />
         </section>
       </main>
     );
