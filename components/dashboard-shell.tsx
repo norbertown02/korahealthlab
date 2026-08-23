@@ -1,273 +1,265 @@
-import type { DashboardPayload } from "@/lib/types";
+import { KoraLogo } from "@/components/kora-logo";
+import type { DashboardFilters, DashboardPayload } from "@/lib/types";
 
-function Dot({ color }: { color: string }) {
-  return <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, display: "inline-block" }} />;
+const classOptions = [
+  { value: "all", label: "Todas as modalidades" },
+  { value: "hot-sculpt", label: "Hot Sculpt" },
+  { value: "yoga", label: "Yoga" }
+] as const;
+
+function format(value: number) {
+  return value.toLocaleString("pt-BR");
 }
 
-export function DashboardShell({ data }: { data: DashboardPayload }) {
+export function DashboardShell({
+  data,
+  filters
+}: {
+  data: DashboardPayload;
+  filters: DashboardFilters;
+}) {
+  const studio = data.studio;
   const maxOrigin = Math.max(1, ...data.originEntries.map((item) => item.value));
-  const maxEntries = Math.max(1, ...data.monthly.map((item) => item.entries));
-  const maxSales = Math.max(1, ...data.monthly.map((item) => item.sales));
+  const maxTime = Math.max(1, ...(studio?.timeWindows.map((item) => item.occupancy) ?? [1]));
+  const maxTeacher = Math.max(1, ...(studio?.teachers.map((item) => item.occupancy) ?? [1]));
+  const currentClass = filters.classType ?? "all";
+  const start = data.filters?.start ?? filters.start ?? "";
+  const end = data.filters?.end ?? filters.end ?? "";
 
   return (
-    <main className="page-shell">
-      <section className="hero">
-        <div className="hero-top">
-          <div className="hero-copy">
-            <div className="eyebrow">Kora Health Lab • BI online</div>
-            <h1>Operação, vendas e histórico em uma única URL para celular e computador.</h1>
-            <p>{data.description}</p>
-          </div>
-          <aside className="hero-side">
-            <span className="chip">
-              <Dot color="var(--heat)" />
-              {data.periodLabel}
-            </span>
-            <strong>{data.summaryCards[0]?.value ?? "0"}</strong>
-            <small>entradas no período</small>
-            <small>{data.heroMix}</small>
-          </aside>
+    <main className="kora-report">
+      <header className="topbar">
+        <div className="brand-lockup">
+          <KoraLogo className="brand-logo" />
+          <span>PRIVATE STUDIO REPORT</span>
         </div>
-        <div className="hero-tags">
-          <div className="tag">URL privada</div>
-          <div className="tag">Sincronização automática</div>
-          <div className="tag">Banco histórico</div>
-          <div className="tag">Entradas, vendas e recorrência</div>
-          <div className="tag">Pronto para professor e ocupação</div>
+        <div className="topbar-meta">
+          <span className="live-dot" />
+          Histórico salvo e auditável
+        </div>
+      </header>
+
+      <section className="hero-kora">
+        <div className="hero-copy-kora">
+          <p className="kicker">Kora Health Lab / visão de gestão</p>
+          <h1>O corpo da operação,<br /><i>visto com calma.</i></h1>
+          <p className="hero-description">
+            Leia demanda, capacidade e recorrência para decidir onde expandir, ajustar ou proteger a experiência do estúdio.
+          </p>
+        </div>
+        <div className="hero-orbit" aria-hidden="true">
+          <span className="orbit-label">MOVIMENTO<br />COM INTENÇÃO</span>
+          <span className="orbit-ring ring-a" />
+          <span className="orbit-ring ring-b" />
+        </div>
+        <div className="hero-stat">
+          <span>recorte atual</span>
+          <strong>{data.periodLabel}</strong>
+          <small>{data.heroMix}</small>
         </div>
       </section>
 
-      <section className="grid">
-        <article className="panel">
-          <div className="section-head">
+      <form className="filter-deck" action="/" method="get">
+        <div className="filter-title">
+          <span>Recorte</span>
+          <strong>Escolha o que quer entender</strong>
+        </div>
+        <label>
+          <span>De</span>
+          <input name="start" type="date" defaultValue={start} />
+        </label>
+        <label>
+          <span>Até</span>
+          <input name="end" type="date" defaultValue={end} />
+        </label>
+        <label className="filter-wide">
+          <span>Modalidade</span>
+          <select name="classType" defaultValue={currentClass}>
+            {classOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+        <button type="submit">Atualizar visão</button>
+      </form>
+
+      <section className="signal-row">
+        <div className="signal-intro">
+          <p className="kicker">Sinais do período</p>
+          <h2>O que merece atenção agora.</h2>
+        </div>
+        <div className="signal-cards">
+          {(data.actions.length ? data.actions : [{ tone: "base", title: "Histórico em construção", detail: "Os sinais de decisão aparecem conforme as aulas são sincronizadas." }]).map((item) => (
+            <article className="signal-card" key={item.title}>
+              <span className={`signal-tag ${item.tone}`}>{item.tone}</span>
+              <h3>{item.title}</h3>
+              <p>{item.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="metric-ribbon">
+        {data.summaryCards.slice(0, 7).map((item, index) => (
+          <article className={`ribbon-card ribbon-${index}`} key={item.label}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <small>{item.note}</small>
+          </article>
+        ))}
+      </section>
+
+      <section className="report-grid">
+        <article className="report-card card-wide card-dark">
+          <div className="section-title light-title">
             <div>
-              <div className="eyebrow">Painel executivo</div>
-              <h2>Resumo do período</h2>
+              <p className="kicker">Modalidades</p>
+              <h2>Ocupação por prática</h2>
             </div>
-            <p>{data.summaryNote}</p>
+            <p>Capacidade ocupada, não apenas entradas no estúdio.</p>
           </div>
-          <div className="metric-grid">
-            {data.summaryCards.map((item) => (
-              <div className="metric-card" key={item.label}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <small>{item.note}</small>
+          <div className="modality-grid">
+            {(studio?.modalities ?? []).map((modality) => (
+              <div className="modality-card" key={modality.key}>
+                <div className="modality-top"><span>{modality.name}</span><b>{modality.occupancy}%</b></div>
+                <div className="occupancy-track"><span style={{ width: `${modality.occupancy}%` }} /></div>
+                <div className="modality-bottom">
+                  <span>{format(modality.sessions)} aulas</span>
+                  <span>{format(modality.occupied)} / {format(modality.capacity)} vagas</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="modality-note">Hot Yoga é lido dentro de Yoga para que a decisão de grade compare famílias de prática, sem diluir a operação.</div>
+        </article>
+
+        <article className="report-card card-tall">
+          <div className="section-title">
+            <div>
+              <p className="kicker">Capacidade</p>
+              <h2>Quando a casa enche</h2>
+            </div>
+            <p>Ocupação por horário de início.</p>
+          </div>
+          <div className="time-ladder">
+            {(studio?.timeWindows ?? []).map((window) => (
+              <div className="time-row" key={window.label}>
+                <span>{window.label}</span>
+                <div className="time-bar"><i style={{ width: `${(window.occupancy / maxTime) * 100}%` }} /></div>
+                <b>{window.occupancy}%</b>
+                <small>{window.sessions} aulas</small>
               </div>
             ))}
           </div>
         </article>
 
-        <article className="panel panel-half">
-          <div className="section-head">
+        <article className="report-card card-half">
+          <div className="section-title">
             <div>
-              <div className="eyebrow">Mapa térmico</div>
-              <h2>Acessos por dia da semana</h2>
+              <p className="kicker">Canais</p>
+              <h2>De onde vem a presença</h2>
             </div>
-            <p>Leitura rápida dos dias mais fortes, com peso de parceiros em cada um.</p>
+            <p>Uma entrada, uma origem.</p>
           </div>
-          <div className="heat-grid">
-            {data.weekday.map((item) => {
-              const ratio = Math.max(0.22, item.entries / Math.max(1, Math.max(...data.weekday.map((day) => day.entries))));
-              return (
-                <div
-                  className="heat-cell"
-                  key={item.day}
-                  style={{ background: `linear-gradient(180deg, rgba(237,108,68,${ratio}), rgba(255,255,255,0.9))` }}
-                >
-                  <div className="chip">{item.day}</div>
-                  <strong style={{ display: "block", marginTop: 10, fontSize: 28 }}>{item.entries.toLocaleString("pt-BR")}</strong>
-                  <small className="muted">
-                    Clientes únicos: {item.uniqueClients.toLocaleString("pt-BR")}
-                    <br />
-                    Share parceiros: {item.aggregatorShare}%
-                  </small>
-                </div>
-              );
+          <div className="origin-list">
+            {data.originEntries.map((item) => (
+              <div className="origin-row" key={item.label}>
+                <span>{item.label}</span>
+                <div><i style={{ width: `${(item.value / maxOrigin) * 100}%`, background: item.tone }} /></div>
+                <b>{format(item.value)}</b>
+              </div>
+            ))}
+          </div>
+          <small className="footnote">Agregadores classificam o acesso existente; não são somados ao total novamente.</small>
+        </article>
+
+        <article className="report-card card-half">
+          <div className="section-title">
+            <div>
+              <p className="kicker">Ritmo semanal</p>
+              <h2>Onde a semana responde</h2>
+            </div>
+            <p>Acessos e peso de agregadores.</p>
+          </div>
+          <div className="weekday-strip">
+            {data.weekday.map((day) => {
+              const height = Math.max(14, day.entries / Math.max(1, ...data.weekday.map((item) => item.entries)) * 112);
+              return <div className="weekday-col" key={day.day}>
+                <div className="weekday-bar" style={{ height }}><span>{day.entries}</span></div>
+                <b>{day.day}</b>
+                <small>{day.aggregatorShare}% parceiros</small>
+              </div>;
             })}
           </div>
         </article>
 
-        <article className="panel panel-half">
-          <div className="section-head">
+        <article className="report-card card-wide">
+          <div className="section-title">
             <div>
-              <div className="eyebrow">Canais</div>
-              <h2>Entradas por origem</h2>
+              <p className="kicker">Professoras</p>
+              <h2>Quem sustenta a experiência</h2>
             </div>
-            <p>Separação direta entre contratos/créditos e agregadores.</p>
+            <p>Ranking por ocupação, com volume suficiente para leitura.</p>
           </div>
-          <div className="bar-list">
-            {data.originEntries.map((item) => (
-              <div className="bar-row" key={item.label}>
-                <div>{item.label}</div>
-                <div className="bar-track">
-                  <div className="bar-fill" style={{ width: `${(item.value / maxOrigin) * 100}%`, background: item.tone }} />
-                </div>
-                <strong>{item.value.toLocaleString("pt-BR")}</strong>
+          <div className="teacher-table">
+            <div className="teacher-head"><span>Professora</span><span>Aulas</span><span>Ocupação</span><span>Vagas ocupadas</span></div>
+            {(studio?.teachers ?? []).slice(0, 8).map((teacher, index) => (
+              <div className="teacher-line" key={teacher.name}>
+                <span><em>{String(index + 1).padStart(2, "0")}</em>{teacher.name}</span>
+                <span>{teacher.classes}</span>
+                <span className="teacher-progress"><i style={{ width: `${(teacher.occupancy / maxTeacher) * 100}%` }} />{teacher.occupancy}%</span>
+                <span>{teacher.occupied} / {teacher.capacity}</span>
               </div>
             ))}
           </div>
         </article>
 
-        <article className="panel">
-          <div className="section-head">
+        <article className="report-card card-half">
+          <div className="section-title">
             <div>
-              <div className="eyebrow">Faixas</div>
-              <h2>Volume e mix por horário</h2>
+              <p className="kicker">Comportamento</p>
+              <h2>Base e retorno</h2>
             </div>
-            <p>Leitura útil para agenda, campanhas e conversão por janela operacional.</p>
+            <p>Leitura que amadurece junto do histórico.</p>
           </div>
-          <div className="stack-list">
-            {data.slotMix.map((item) => (
-              <div className="stack-row" key={item.slot}>
-                <div>
-                  <strong>{item.slot}</strong>
-                  <br />
-                  <small className="muted">
-                    {item.entries.toLocaleString("pt-BR")} entradas • {item.uniqueClients.toLocaleString("pt-BR")} clientes
-                  </small>
-                </div>
-                <div className="stack-track">
-                  <div className="seg-contract" style={{ width: `${item.mix.contract}%` }} />
-                  <div className="seg-wellhub" style={{ width: `${item.mix.wellhub}%` }} />
-                  <div className="seg-totalpass" style={{ width: `${item.mix.totalpass}%` }} />
-                  <div className="seg-classpass" style={{ width: `${item.mix.classpass}%` }} />
-                </div>
+          <div className="behavior-stack">
+            {data.customerGroups.map((group) => (
+              <div className="behavior-item" key={group.title}>
+                <span>{group.title}</span>
+                <strong>{typeof group.value === "number" ? format(group.value) : group.value}</strong>
+                <small>{group.note}</small>
               </div>
             ))}
           </div>
         </article>
 
-        <article className="panel panel-half">
-          <div className="section-head">
+        <article className="report-card card-half">
+          <div className="section-title">
             <div>
-              <div className="eyebrow">Tendência</div>
+              <p className="kicker">Histórico</p>
               <h2>Entradas x vendas</h2>
             </div>
-            <p>Comparativo mensal pronto para crescer com o histórico no banco.</p>
+            <p>Não compare uma entrada com uma venda: são sinais distintos.</p>
           </div>
-          <div className="timeline">
-            {data.monthly.map((item) => (
-              <div className="timeline-col" key={item.month}>
-                <div className="timeline-bar sales" style={{ height: `${(item.sales / maxSales) * 84}px` }} />
-                <div className="timeline-bar entries" style={{ height: `${(item.entries / maxEntries) * 130}px` }} />
-                <div className="axis-label">{item.month}</div>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="panel panel-half">
-          <div className="section-head">
-            <div>
-              <div className="eyebrow">Clientes</div>
-              <h2>Comportamento da base</h2>
-            </div>
-            <p>Retenção e retorno já preparados para leitura contínua no histórico.</p>
-          </div>
-          <div className="surface-grid">
-            {data.customerGroups.map((item) => (
-              <div className="surface-card" key={item.title} style={{ background: item.accent }}>
-                <span className="chip">{item.title}</span>
-                <strong>{item.value.toLocaleString("pt-BR")}</strong>
-                <small className="muted">{item.note}</small>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="panel panel-half">
-          <div className="section-head">
-            <div>
-              <div className="eyebrow">Ações</div>
-              <h2>Leituras acionáveis</h2>
-            </div>
-            <p>Camada pronta para empurrar decisões de grade, marketing e conversão.</p>
-          </div>
-          <div className="action-list">
-            {data.actions.map((item) => (
-              <div className="surface-card list-row" key={item.title}>
-                <div>
-                  <div className="chip">{item.tag}</div>
-                  <strong style={{ display: "block", marginTop: 10 }}>{item.title}</strong>
-                  <small className="muted">{item.detail}</small>
+          <div className="month-compare">
+            {data.monthly.map((month) => {
+              const max = Math.max(1, ...data.monthly.map((item) => item.entries));
+              return <div className="month-block" key={month.month}>
+                <div className="month-stacks">
+                  <i className="entry" style={{ height: `${(month.entries / max) * 116}px` }} />
+                  <i className="sales" style={{ height: `${Math.max(12, month.sales / max * 116)}px` }} />
                 </div>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="panel panel-half">
-          <div className="section-head">
-            <div>
-              <div className="eyebrow">Agenda real</div>
-              <h2>Professoras e ocupação</h2>
-            </div>
-            <p>Calculado a partir de aulas, vagas e ocupação registrados na agenda da EVO.</p>
-          </div>
-          <div className="surface-grid">
-            {data.teachers.length ? data.teachers.map((teacher) => (
-              <div className="surface-card" key={teacher.name} style={{ background: "rgba(45, 141, 130, 0.12)" }}>
-                <span className="chip">{teacher.occupancy}% ocupação</span>
-                <strong>{teacher.name}</strong>
-                <small className="muted">{teacher.classes} aulas no período</small>
-              </div>
-            )) : (
-              <div className="empty-state">A agenda ainda não possui turmas suficientes para exibir professoras.</div>
-            )}
-          </div>
-        </article>
-
-        <article className="panel">
-          <div className="section-head">
-            <div>
-              <div className="eyebrow">Infraestrutura</div>
-              <h2>Como isso fica online e histórico</h2>
-            </div>
-            <p>{data.syncLabel}</p>
-          </div>
-          <div className="split">
-            <div className="surface-card" style={{ flex: 1 }}>
-              <strong>URL privada</strong>
-              <p className="muted">Hospede em Vercel com domínio como `bi.korahealthlab.com.br` e proteção por senha ou autenticação.</p>
-            </div>
-            <div className="surface-card" style={{ flex: 1 }}>
-              <strong>Banco histórico</strong>
-              <p className="muted">Postgres guarda fatos de entradas, vendas, agregadores e snapshots do dashboard para comparativos mensais.</p>
-            </div>
-            <div className="surface-card" style={{ flex: 1 }}>
-              <strong>Sincronização</strong>
-              <p className="muted">O Supabase sincroniza a EVO internamente. O dashboard consulta somente o banco histórico.</p>
-            </div>
-          </div>
-          <div className="secure-note">
-            <strong>Segurança:</strong> o token da EVO fica somente no Supabase Vault e nunca chega à Vercel ou ao navegador. Nada sensível vai para o navegador.
-          </div>
-        </article>
-
-        <article className="panel">
-          <div className="section-head">
-            <div>
-              <div className="eyebrow">Fontes</div>
-              <h2>Status das integrações</h2>
-            </div>
-            <p>Checklist para vocês saberem de onde cada parte do BI está vindo.</p>
-          </div>
-          <div className="source-table">
-            {data.sources.map((item) => (
-              <div className="source-row" key={`${item.name}-${item.endpoint}`}>
-                <div>
-                  <strong>{item.name}</strong>
-                  <div className="muted">{item.endpoint}</div>
-                </div>
-                <div className="muted" style={{ flex: 1 }}>
-                  {item.usage}
-                </div>
-                <strong>{item.status}</strong>
-              </div>
-            ))}
+                <b>{month.month}</b>
+                <small>{month.entries} acessos / {month.sales} vendas</small>
+              </div>;
+            })}
           </div>
         </article>
       </section>
+
+      <footer className="report-footer">
+        <div><KoraLogo className="footer-logo" /></div>
+        <p>Dados operacionais armazenados no Supabase. A EVO é consultada somente pela sincronização interna.</p>
+        <span>ÚLTIMA VISÃO: {data.periodLabel}</span>
+      </footer>
     </main>
   );
 }
