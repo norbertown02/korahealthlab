@@ -241,14 +241,21 @@ export function DashboardShell({
             <p>{customers?.note ?? "A análise de clientes será exibida assim que o histórico estiver disponível."}</p>
           </div>
           <div className="client-kpis">
-            <div><span>Base total</span><strong>{customers ? format(customers.totalClients) : "—"}</strong><small>clientes desde abril</small></div>
-            <div><span>Ativos no recorte</span><strong>{customers ? format(customers.activeClients) : "—"}</strong><small>ao menos uma visita</small></div>
+            <div><span>Base observada</span><strong>{customers ? format(customers.totalClients) : "—"}</strong><small>pessoas identificadas no histórico</small></div>
+            <div><span>Ativos no recorte</span><strong>{customers ? format(customers.activeClients) : "—"}</strong><small>ao menos um dia de acesso</small></div>
+            <div><span>Repetiram no período</span><strong>{customers ? `${customers.repeatRate}%` : "—"}</strong><small>2 ou mais dias de acesso</small></div>
+            <div><span>Consistência semanal</span><strong>{customers ? `${customers.consistencyRate}%` : "—"}</strong><small>frequentaram em 2+ semanas</small></div>
             <div><span>Frequência média</span><strong>{customers ? customers.averageFrequency : "—"}</strong><small>dias ativos por cliente</small></div>
-            <div><span>Ritmo semanal</span><strong>{customers ? customers.weeklyFrequency : "—"}</strong><small>dias ativos por semana</small></div>
-            <div><span>Ativação em 7 dias</span><strong>{customers?.activation7 === null || !customers ? "—" : `${customers.activation7}%`}</strong><small>voltaram após 1ª visita</small></div>
-            <div><span>Ativação em 30 dias</span><strong>{customers?.activation30 === null || !customers ? "—" : `${customers.activation30}%`}</strong><small>voltaram em até 30 dias</small></div>
+            <div><span>2ª visita em</span><strong>{customers?.medianDaysToSecondVisit === null || !customers ? "—" : `${customers.medianDaysToSecondVisit} dias`}</strong><small>mediana entre quem voltou</small></div>
           </div>
-          {customers?.quality === "partial" ? <div className="data-caveat">Histórico em completamento: meses pendentes ({customers.missingMonths.join(", ")}). Frequência e ranking do recorte são reais; churn e retenção de longo prazo aguardam a série contínua.</div> : null}
+          {customers?.quality === "partial" ? <div className="data-caveat">Histórico em completamento: meses pendentes ({customers.missingMonths.join(", ")}). Os sinais dentro do recorte são reais; não classificamos clientes como novos, recuperados ou perdidos antes da série contínua.</div> : null}
+          <div className="client-journey">
+            <div><span>Primeiras visitas observadas</span><strong>{customers ? format(customers.observedFirstVisits) : "—"}</strong><small>primeiro acesso dentro deste recorte</small></div>
+            <div><span>Ativação em 7 dias</span><strong>{customers?.activation7 === null || !customers ? "—" : `${customers.activation7}%`}</strong><small>voltaram após a primeira visita</small></div>
+            <div><span>Ativação em 30 dias</span><strong>{customers?.activation30 === null || !customers ? "—" : `${customers.activation30}%`}</strong><small>continuidade inicial da jornada</small></div>
+            <div><span>Alta frequência</span><strong>{customers ? format(customers.frequentClients) : "—"}</strong><small>4 ou mais dias no recorte</small></div>
+            <div><span>Ativos na última semana</span><strong>{customers ? format(customers.recentActiveClients) : "—"}</strong><small>presença nos últimos 7 dias disponíveis</small></div>
+          </div>
           <div className="client-bottom">
             <div>
               <p className="mini-title">Distribuição de frequência</p>
