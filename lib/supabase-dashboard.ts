@@ -58,12 +58,12 @@ export async function getDashboardFromSupabase(
       {
         label: "Ocupação das aulas",
         value: `${studio.occupancy}%`,
-        note: `${studio.occupied} presenças em ${studio.capacity} vagas`
+        note: `${studio.occupied} presenças em ${studio.capacity} vagas finalizadas`
       },
       {
         label: "Aulas realizadas",
         value: studio.totalSessions.toLocaleString("pt-BR"),
-        note: "Turmas com agenda, capacidade e modalidade"
+        note: `Somente finalizadas pela EVO${studio.cancelledSessions ? ` • ${studio.cancelledSessions} cancelada(s) excluída(s)` : ""}`
       },
       ...dashboard.summaryCards.slice(4)
     ],
@@ -78,7 +78,7 @@ export async function getDashboardFromSupabase(
             name: "Agenda e ocupação",
             endpoint: "Supabase • fact_class_sessions",
             usage: "Aulas, modalidade, vagas e professoras",
-            status: `${studio.totalSessions} sessões • ${studio.occupancy}% ocupação`
+            status: `${studio.totalSessions} aulas finalizadas • ${studio.occupancy}% ocupação${studio.cancelledSessions ? ` • ${studio.cancelledSessions} cancelada(s) excluída(s)` : ""}`
           }
         : source
     )
