@@ -1,4 +1,4 @@
-import { getPool } from "@/lib/db";
+import { getSupabaseAdmin } from "@/lib/db";
 import type { DashboardPayload, EvoAggregatorCheckin, EvoEntry, EvoSale, SyncWindow } from "@/lib/types";
 
 type PersistPayload = {
@@ -10,151 +10,87 @@ type PersistPayload = {
 };
 
 export async function persistSync(payload: PersistPayload) {
-  const pool = getPool();
-  const client = await pool.connect();
+  const supabase = getSupabaseAdmin();
 
-  try {
-    await client.query("begin");
+  const { error: syncRunError } = await supabase.from("sync_runs").insert({
+    period_start: payload.window.dateStart,
+    period_end: payload.window.dateEnd,
+    status: "completed",
+    entries_count: payload.entries.length,
+    aggregators_count: payload.aggregators.length,
+    sales_count: payload.sales.length,
+    dashboard_snapshot: payload.dashboard
+  });
 
-    await client.query(
-      `
-        insert into sync_runs (period_start, period_end, status, entries_count, aggregators_count, sales_count, dashboard_snapshot)
-        values ($1, $2, $3, $4, $5, $6, $7)
-      `,
-      [
-        payload.window.dateStart,
-        payload.window.dateEnd,
-        "completed",
-        payload.entries.length,
-        payload.aggregators.length,
-        payload.sales.length,
-        JSON.stringify(payload.dashboard)
-      ]
+  if (syncRunError) throw syncRunError;
+
+  if (payload.entries.length) {
+    const { error } = await supabase.from("fact_entries").insert(
+      payload.entries.map((entry) => ({
+        id_member: entry.idMember ?? null,
+        member_name: entry.nameMember ?? entry.nameProspect ?? null,
+        entry_date: (entry.date ?? entry.dateTurn ?? "").slice(0, 10) || null,
+        entry_timestamp: entry.date ?? entry.dateTurn ?? null,
+        branch_id: entry.idBranch ?? null,
+        entry_type: entry.entryType ?? null,
+        device: entry.device ?? null,
+        raw_payload: entry
+      }))
     );
-
-    await client.query("delete from fact_entries where entry_date between $1 and $2", [
-      payload.window.dateStart,
-      payload.window.dateEnd
-    ]);
-    await client.query("delete from fact_aggregator_checkins where checkin_date between $1 and $2", [
-      payload.window.dateStart,
-      payload.window.dateEnd
-    ]);
-    await client.query("delete from fact_sales where sale_date between $1 and $2", [
-      payload.window.dateStart,
-      payload.window.dateEnd
-    ]);
-
-    for (const entry of payload.entries) {
-      await client.query(
-        `
-          insert into fact_entries (
-            id_member,
-            member_name,
-            entry_date,
-            entry_timestamp,
-            branch_id,
-            entry_type,
-            device,
-            raw_payload
-          ) values ($1, $2, $3, $4, $5, $6, $7, $8)
-        `,
-        [
-          entry.idMember ?? null,
-          entry.nameMember ?? entry.nameProspect ?? null,
-          (entry.date ?? entry.dateTurn ?? "").slice(0, 10) || null,
-          entry.date ?? entry.dateTurn ?? null,
-          entry.idBranch ?? null,
-          entry.entryType ?? null,
-          entry.device ?? null,
-          JSON.stringify(entry)
-        ]
-      );
-    }
-
-    for (const item of payload.aggregators) {
-      await client.query(
-        `
-          insert into fact_aggregator_checkins (
-            id_member,
-            member_name,
-            aggregator_name,
-            checkin_date,
-            checkin_timestamp,
-            branch_id,
-            status,
-            raw_payload
-          ) values ($1, $2, $3, $4, $5, $6, $7, $8)
-        `,
-        [
-          item.idMember ?? null,
-          item.name ?? null,
-          item.aggregator ?? null,
-          item.checkinDate?.slice(0, 10) ?? null,
-          item.checkinDate ?? null,
-          item.checkinBranchId ?? null,
-          item.status ?? null,
-          JSON.stringify(item)
-        ]
-      );
-    }
-
-    for (const sale of payload.sales) {
-      await client.query(
-        `
-          insert into fact_sales (
-            id_sale,
-            id_member,
-            branch_id,
-            sale_date,
-            sale_timestamp,
-            raw_payload
-          ) values ($1, $2, $3, $4, $5, $6)
-          on conflict (id_sale) do update
-          set id_member = excluded.id_member,
-              branch_id = excluded.branch_id,
-              sale_date = excluded.sale_date,
-              sale_timestamp = excluded.sale_timestamp,
-              raw_payload = excluded.raw_payload
-        `,
-        [
-          sale.idSale,
-          sale.idMember ?? null,
-          sale.idBranch ?? null,
-          sale.saleDate?.slice(0, 10) ?? sale.saleDateServer?.slice(0, 10) ?? null,
-          sale.saleDate ?? sale.saleDateServer ?? null,
-          JSON.stringify(sale)
-        ]
-      );
-    }
-
-    await client.query(
-      `
-        insert into dashboard_snapshots (period_start, period_end, payload)
-        values ($1, $2, $3)
-      `,
-      [payload.window.dateStart, payload.window.dateEnd, JSON.stringify(payload.dashboard)]
-    );
-
-    await client.query("commit");
-  } catch (error) {
-    await client.query("rollback");
-    throw error;
-  } finally {
-    client.release();
+    if (error) throw error;
   }
+
+  if (payload.aggregators.length) {
+    const { error } = await supabase.from("fact_aggregator_checkins").insert(
+      payload.aggregators.map((item) => ({
+        id_member: item.idMember ?? null,
+        member_name: item.name ?? null,
+        aggregator_name: item.aggregator ?? null,
+        checkin_date: item.checkinDate?.slice(0, 10) ?? null,
+        checkin_timestamp: item.checkinDate ?? null,
+        branch_id: item.checkinBranchId ?? null,
+        status: item.status ?? null,
+        raw_payload: item
+      }))
+    );
+    if (error) throw error;
+  }
+
+  if (payload.sales.length) {
+    const { error } = await supabase.from("fact_sales").upsert(
+      payload.sales.map((sale) => ({
+        id_sale: sale.idSale,
+        id_member: sale.idMember ?? null,
+        branch_id: sale.idBranch ?? null,
+        sale_date: sale.saleDate?.slice(0, 10) ?? sale.saleDateServer?.slice(0, 10) ?? null,
+        sale_timestamp: sale.saleDate ?? sale.saleDateServer ?? null,
+        raw_payload: sale
+      })),
+      { onConflict: "id_sale" }
+    );
+    if (error) throw error;
+  }
+
+  const { error: snapshotError } = await supabase.from("dashboard_snapshots").insert({
+    period_start: payload.window.dateStart,
+    period_end: payload.window.dateEnd,
+    payload: payload.dashboard
+  });
+
+  if (snapshotError) throw snapshotError;
 }
 
 export async function getLatestDashboard() {
-  const pool = getPool();
-  const result = await pool.query(
-    `
-      select payload
-      from dashboard_snapshots
-      order by created_at desc
-      limit 1
-    `
-  );
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("dashboard_snapshots")
+    .select("payload")
+    .order("created_at", { ascending: false })
+    .limit(1);
 
-  return result.rows[0]?.payload ?? null;
+  if (error) {
+    throw error;
+  }
+
+  return data?.[0]?.payload ?? null;
 }
