@@ -1,5 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-shell";
-import { getLatestDashboard } from "@/lib/repository";
+import { getDashboardFromSupabase } from "@/lib/supabase-dashboard";
 import type { DashboardPayload } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -9,10 +9,9 @@ export default async function HomePage() {
   let setupMessage: string | null = null;
 
   try {
-    payload = (await getLatestDashboard()) as DashboardPayload | null;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    setupMessage = `O dashboard consulta exclusivamente o historico salvo no Supabase. Detalhe tecnico: ${message}`;
+    payload = await getDashboardFromSupabase();
+  } catch {
+    setupMessage = "Não foi possível consultar os dados salvos no Supabase. Tente atualizar a página em instantes.";
   }
 
   if (!payload) {
