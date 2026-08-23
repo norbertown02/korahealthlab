@@ -39,11 +39,18 @@ export function middleware(request: NextRequest) {
   if (pathname === "/api/sync") {
     const secret = process.env.CRON_SECRET;
     if (!secret) {
-      return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 503 });
+      const password = process.env.APP_PASSWORD;
+      if (password && validBasicAuth(request.headers.get("authorization"), password)) {
+        return NextResponse.next();
+      }
+
+      return NextResponse.json({ error: "Auth required" }, { status: 401 });
     }
 
     const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-    if (bearer !== secret) {
+    const password = process.env.APP_PASSWORD;
+    const hasAppAccess = password && validBasicAuth(request.headers.get("authorization"), password);
+    if (bearer !== secret && !hasAppAccess) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
