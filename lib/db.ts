@@ -11,6 +11,10 @@ export function getSupabaseAdmin() {
     const supabaseUrl = env.SUPABASE_URL;
     const serviceKey = env.SUPABASE_SECRET_KEY ?? env.SUPABASE_SERVICE_ROLE_KEY;
 
+    if (!serviceKey) {
+      throw new Error("Configure SUPABASE_SECRET_KEY na Vercel.");
+    }
+
     global.koraSupabase = createClient(supabaseUrl, serviceKey, {
       auth: {
         persistSession: false,
