@@ -5,7 +5,15 @@ import type { DashboardPayload } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const payload = (await getLatestDashboard()) as DashboardPayload | null;
+  let payload: DashboardPayload | null = null;
+  let setupMessage: string | null = null;
+
+  try {
+    payload = (await getLatestDashboard()) as DashboardPayload | null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    setupMessage = `O dashboard ja esta publicado. Falta concluir a configuracao das variaveis de ambiente e a primeira sincronizacao. Detalhe tecnico: ${message}`;
+  }
 
   if (!payload) {
     return (
@@ -16,6 +24,7 @@ export default async function HomePage() {
           <p className="hero-copy">
             Configure o banco, as variáveis de ambiente e chame <code>/api/sync</code> para popular o dashboard com dados reais.
           </p>
+          {setupMessage ? <p className="hero-copy">{setupMessage}</p> : null}
         </section>
       </main>
     );
