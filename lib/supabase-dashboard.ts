@@ -1,63 +1,75 @@
-import type { DashboardPayload } from "@/lib/types";
+import type { DashboardFilters, DashboardPayload, StudioInsights } from "@/lib/types";
 
 const dashboardEndpoint =
   "https://ovquzagoddwgqixtmkbr.supabase.co/functions/v1/kora-dashboard-secure";
-const teacherEndpoint =
-  "https://ovquzagoddwgqixtmkbr.supabase.co/functions/v1/kora-teacher-metrics";
+const studioEndpoint =
+  "https://ovquzagoddwgqixtmkbr.supabase.co/functions/v1/kora-studio-insights";
 
-type TeacherMetrics = {
-  teachers: DashboardPayload["teachers"];
-  sessions: number;
-  overallOccupancy: number;
-};
+function searchParams(filters: DashboardFilters) {
+  const params = new URLSearchParams();
+  if (filters.start) params.set("start", filters.start);
+  if (filters.end) params.set("end", filters.end);
+  if (filters.classType) params.set("classType", filters.classType);
+  const value = params.toString();
+  return value ? `?${value}` : "";
+}
 
-export async function getDashboardFromSupabase(): Promise<DashboardPayload> {
+export async function getDashboardFromSupabase(
+  filters: DashboardFilters = {}
+): Promise<DashboardPayload> {
   const secret = process.env.KORA_DASHBOARD_READ_SECRET;
-  if (!secret) {
-    throw new Error("Conexão segura com o Supabase não configurada.");
-  }
+  if (!secret) throw new Error("Conexão segura com o Supabase não configurada.");
 
+  const suffix = searchParams(filters);
   const request = (endpoint: string) =>
-    fetch(endpoint, {
+    fetch(`${endpoint}${suffix}`, {
       headers: { "x-kora-dashboard-secret": secret },
       cache: "no-store"
     });
 
-  const [dashboardResponse, teacherResponse] = await Promise.all([
+  const [dashboardResponse, studioResponse] = await Promise.all([
     request(dashboardEndpoint),
-    request(teacherEndpoint)
+    request(studioEndpoint)
   ]);
 
-  if (!dashboardResponse.ok || !teacherResponse.ok) {
+  if (!dashboardResponse.ok || !studioResponse.ok) {
     throw new Error("Não foi possível carregar os dados salvos no Supabase.");
   }
 
   const dashboard = (await dashboardResponse.json()) as DashboardPayload;
-  const teacherMetrics = (await teacherResponse.json()) as TeacherMetrics;
+  const studio = (await studioResponse.json()) as StudioInsights;
 
   return {
     ...dashboard,
-    teachers: teacherMetrics.teachers,
+    studio,
+    teachers: studio.teachers.map((teacher) => ({
+      name: teacher.name,
+      classes: teacher.classes,
+      occupancy: teacher.occupancy,
+      returnRate: 0
+    })),
     summaryCards: [
-      ...dashboard.summaryCards,
+      ...dashboard.summaryCards.slice(0, 4),
       {
         label: "Ocupação das aulas",
-        value: `${teacherMetrics.overallOccupancy}%`,
-        note: `${teacherMetrics.sessions} sessões com professora e capacidade registradas`
-      }
+        value: `${studio.occupancy}%`,
+        note: `${studio.occupied} presenças em ${studio.capacity} vagas`
+      },
+      {
+        label: "Aulas realizadas",
+        value: studio.totalSessions.toLocaleString("pt-BR"),
+        note: "Turmas com agenda, capacidade e modalidade"
+      },
+      ...dashboard.summaryCards.slice(4)
     ],
-    actions: teacherMetrics.teachers.slice(0, 3).map((teacher) => ({
-      title: `${teacher.name} • ${teacher.occupancy}% de ocupação`,
-      tag: "professora",
-      detail: `${teacher.classes} aulas registradas no período.`
-    })),
+    actions: studio.opportunities,
     sources: dashboard.sources.map((source) =>
       source.name === "Professores e ocupação"
         ? {
-            name: "Professores e ocupação",
+            name: "Agenda e ocupação",
             endpoint: "Supabase • fact_class_sessions",
-            usage: "Aulas, capacidade e ocupação por professora",
-            status: `${teacherMetrics.sessions} sessões • ${teacherMetrics.teachers.length} professoras`
+            usage: "Aulas, modalidade, vagas e professoras",
+            status: `${studio.totalSessions} sessões • ${studio.occupancy}% ocupação`
           }
         : source
     )
