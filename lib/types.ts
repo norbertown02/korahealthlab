@@ -83,6 +83,7 @@ export type EvoEntry = {
   idBranch?: number | null;
   entryType?: string | null;
   device?: string | null;
+  [key: string]: unknown;
 };
 
 export type EvoAggregatorCheckin = {
@@ -94,6 +95,7 @@ export type EvoAggregatorCheckin = {
   checkinBranchId?: number | null;
   status?: string | null;
   tokenUsed?: string | null;
+  [key: string]: unknown;
 };
 
 export type EvoSaleItem = {
