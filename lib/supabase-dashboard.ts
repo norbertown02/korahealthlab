@@ -62,7 +62,11 @@ export async function getDashboardFromSupabase(
       },
       ...dashboard.summaryCards.slice(4)
     ],
-    actions: studio.opportunities,
+    actions: studio.opportunities.map((item) => ({
+      title: item.title,
+      tag: item.tone,
+      detail: item.detail
+    })),
     sources: dashboard.sources.map((source) =>
       source.name === "Professores e ocupação"
         ? {
