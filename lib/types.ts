@@ -84,6 +84,8 @@ export type StudioInsights = {
   capacity: number;
   occupied: number;
   occupancy: number;
+  cancelledSessions: number;
+  pendingSessions: number;
   modalities: Array<{ key: string; name: string; sessions: number; capacity: number; occupied: number; occupancy: number }>;
   teachers: Array<{ name: string; classes: number; capacity: number; occupied: number; occupancy: number }>;
   timeWindows: Array<{ hour: number; label: string; sessions: number; capacity: number; occupied: number; occupancy: number }>;
