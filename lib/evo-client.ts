@@ -3,9 +3,10 @@ import type { EvoAggregatorCheckin, EvoEntry, EvoSale, SyncWindow } from "@/lib/
 
 function authHeader() {
   const env = getEvoEnv();
-  const token = env.EVO_BASIC_TOKEN.toLowerCase().startsWith("basic ")
-    ? env.EVO_BASIC_TOKEN
-    : `Basic ${env.EVO_BASIC_TOKEN}`;
+  const configuredToken = env.EVO_BASIC_TOKEN.trim();
+  const token = configuredToken.toLowerCase().startsWith("basic ")
+    ? configuredToken
+    : `Basic ${Buffer.from(`${env.EVO_DNS}:${configuredToken}`).toString("base64")}`;
 
   return {
     Authorization: token,
