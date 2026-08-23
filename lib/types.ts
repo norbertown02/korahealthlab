@@ -52,6 +52,24 @@ export type SourceStatus = {
   status: string;
 };
 
+export type CustomerInsights = {
+  filters: { start: string; end: string; observedEnd: string };
+  quality: "partial" | "complete";
+  missingMonths: string[];
+  totalClients: number;
+  activeClients: number;
+  returningClients: number;
+  newClients: number;
+  averageFrequency: number;
+  weeklyFrequency: number;
+  frequencyBands: Array<{ label: string; min: number; max: number; tone: string; clients: number }>;
+  activation7: number | null;
+  activation30: number | null;
+  ranking: Array<{ name: string; visits: number; totalVisits: number; lastVisit: string }>;
+  risk: Array<{ name: string; daysAway: number; visits: number; lastVisit: string }>;
+  note: string;
+};
+
 export type StudioInsights = {
   filters: { start: string; end: string; classType: "all" | "hot-sculpt" | "yoga" };
   totalSessions: number;
@@ -89,6 +107,7 @@ export type DashboardPayload = {
   sources: SourceStatus[];
   filters?: { start: string; end: string };
   studio?: StudioInsights;
+  customers?: CustomerInsights;
 };
 
 export type EvoEntry = {
