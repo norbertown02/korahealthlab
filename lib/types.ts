@@ -65,6 +65,14 @@ export type CustomerInsights = {
   frequencyBands: Array<{ label: string; min: number; max: number; tone: string; clients: number }>;
   activation7: number | null;
   activation30: number | null;
+  repeatRate: number;
+  consistencyRate: number;
+  frequentClients: number;
+  medianDaysToSecondVisit: number | null;
+  recentActiveClients: number;
+  dormantInPeriod: number;
+  observedFirstVisits: number;
+  periodWeekCount: number;
   ranking: Array<{ name: string; visits: number; totalVisits: number; lastVisit: string }>;
   risk: Array<{ name: string; daysAway: number; visits: number; lastVisit: string }>;
   note: string;
