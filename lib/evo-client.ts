@@ -10,7 +10,8 @@ function authHeader() {
 
   return {
     Authorization: token,
-    Accept: "application/json"
+    // EVO's Swagger sends this exact value even though the response is JSON.
+    Accept: "text/plain"
   };
 }
 
@@ -22,7 +23,10 @@ async function fetchEvo<T>(path: string, params: URLSearchParams) {
   });
 
   if (!response.ok) {
-    throw new Error(`EVO ${path} falhou com status ${response.status}`);
+    const body = (await response.text()).slice(0, 500);
+    throw new Error(
+      `EVO ${path} falhou com status ${response.status}${body ? `: ${body}` : ""}`
+    );
   }
 
   return (await response.json()) as T;
