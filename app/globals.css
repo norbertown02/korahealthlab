@@ -122,3 +122,52 @@ button { cursor: pointer; }
 @media (max-width:700px) {
   .kora-report { width:min(100% - 18px,1540px); padding-top:10px; }.topbar-meta { display:none; }.hero-kora { min-height:500px; padding:28px; grid-template-columns:1fr; border-radius:2px 2px 54px 2px; }.hero-orbit { min-height:140px; width:230px; }.hero-stat { grid-column:auto; }.filter-deck { grid-template-columns:1fr 1fr; padding:14px; }.filter-title { grid-column:1/-1; }.filter-wide,.filter-deck button { grid-column:1/-1; }.signal-cards { grid-template-columns:1fr; }.metric-ribbon { grid-template-columns:repeat(2,1fr); }.ribbon-card { min-height:132px; }.report-grid { grid-template-columns:1fr; gap:12px; }.card-wide,.card-tall,.card-half { grid-column:auto; }.report-card { padding:18px; }.section-title { display:block; }.section-title > p { margin-top:10px; }.modality-grid { grid-template-columns:1fr; }.client-kpis { grid-template-columns:repeat(2,1fr); }.client-bottom { grid-template-columns:1fr; gap:22px; }.client-ranking > div { grid-template-columns:28px 1fr auto; }.client-ranking small { display:none; }.teacher-head { display:none; }.teacher-line { grid-template-columns:1.35fr .45fr .7fr; padding:11px 0; }.teacher-line > span:last-child { display:none; }.origin-row { grid-template-columns:105px 1fr 42px; }.report-footer { grid-template-columns:1fr; gap:10px; }.report-footer span { text-align:left; }.month-compare { gap:14px; overflow-x:auto; }.weekday-strip { gap:4px; }.weekday-col small { display:none; }
 }
+
+
+.client-journey {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1px;
+  margin: 18px 0 26px;
+  background: rgba(46, 57, 38, 0.14);
+  border: 1px solid rgba(46, 57, 38, 0.14);
+}
+
+.client-journey > div {
+  min-height: 112px;
+  padding: 16px;
+  background: #efe9de;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.client-journey span {
+  color: var(--olive);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.client-journey strong {
+  color: var(--ink);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(23px, 2.1vw, 32px);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.client-journey small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+@media (max-width: 900px) {
+  .client-journey { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .client-journey { grid-template-columns: 1fr; }
+}
