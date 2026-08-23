@@ -1,8 +1,8 @@
-import { getEnv } from "@/lib/env";
+import { getEvoEnv } from "@/lib/env";
 import type { EvoAggregatorCheckin, EvoEntry, EvoSale, SyncWindow } from "@/lib/types";
 
 function authHeader() {
-  const env = getEnv();
+  const env = getEvoEnv();
   const token = env.EVO_BASIC_TOKEN.toLowerCase().startsWith("basic ")
     ? env.EVO_BASIC_TOKEN
     : `Basic ${env.EVO_BASIC_TOKEN}`;
@@ -14,7 +14,7 @@ function authHeader() {
 }
 
 async function fetchEvo<T>(path: string, params: URLSearchParams) {
-  const env = getEnv();
+  const env = getEvoEnv();
   const response = await fetch(`${env.EVO_API_BASE_URL}${path}?${params.toString()}`, {
     headers: authHeader(),
     cache: "no-store"
@@ -28,7 +28,7 @@ async function fetchEvo<T>(path: string, params: URLSearchParams) {
 }
 
 export async function fetchEntries(window: SyncWindow) {
-  const env = getEnv();
+  const env = getEvoEnv();
   const all: EvoEntry[] = [];
   let skip = 0;
   const take = 1000;
@@ -59,7 +59,7 @@ export async function fetchEntries(window: SyncWindow) {
 }
 
 export async function fetchAggregatorCheckins(window: SyncWindow) {
-  const env = getEnv();
+  const env = getEvoEnv();
   const params = new URLSearchParams({
     DtStart: `${window.dateStart}T00:00:00`,
     DtEnd: `${window.dateEnd}T23:59:59`,
@@ -80,7 +80,7 @@ export async function fetchAggregatorCheckins(window: SyncWindow) {
 }
 
 export async function fetchSales(window: SyncWindow) {
-  const env = getEnv();
+  const env = getEvoEnv();
   const all: EvoSale[] = [];
   let skip = 0;
   const take = 100;
