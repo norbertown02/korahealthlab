@@ -52,6 +52,21 @@ export type SourceStatus = {
   status: string;
 };
 
+export type StudioInsights = {
+  filters: { start: string; end: string; classType: "all" | "hot-sculpt" | "yoga" };
+  totalSessions: number;
+  capacity: number;
+  occupied: number;
+  occupancy: number;
+  modalities: Array<{ key: string; name: string; sessions: number; capacity: number; occupied: number; occupancy: number }>;
+  teachers: Array<{ name: string; classes: number; capacity: number; occupied: number; occupancy: number }>;
+  timeWindows: Array<{ hour: number; label: string; sessions: number; capacity: number; occupied: number; occupancy: number }>;
+  days: Array<{ day: string; sessions: number; capacity: number; occupied: number; occupancy: number }>;
+  opportunities: Array<{ tone: string; title: string; detail: string }>;
+};
+
+export type DashboardFilters = { start?: string; end?: string; classType?: "all" | "hot-sculpt" | "yoga" };
+
 export type DashboardPayload = {
   description: string;
   periodLabel: string;
@@ -72,6 +87,8 @@ export type DashboardPayload = {
   }>;
   actions: ActionMetric[];
   sources: SourceStatus[];
+  filters?: { start: string; end: string };
+  studio?: StudioInsights;
 };
 
 export type EvoEntry = {
