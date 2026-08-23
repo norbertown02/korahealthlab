@@ -199,14 +199,21 @@ export function DashboardShell({ data }: { data: DashboardPayload }) {
         <article className="panel panel-half">
           <div className="section-head">
             <div>
-              <div className="eyebrow">Próxima camada</div>
-              <h2>Professores e ocupação real</h2>
+              <div className="eyebrow">Agenda real</div>
+              <h2>Professoras e ocupação</h2>
             </div>
-            <p>Essa seção entra assim que a agenda com capacidade e instrutor vier para o banco.</p>
+            <p>Calculado a partir de aulas, vagas e ocupação registrados na agenda da EVO.</p>
           </div>
-          <div className="empty-state">
-            A arquitetura já está pronta para absorver `activities/schedule/detail` e `employees`. Assim que esses endpoints
-            entrarem, este painel passa a mostrar professores, ocupação por turma e pressão da agenda em tempo real.
+          <div className="surface-grid">
+            {data.teachers.length ? data.teachers.map((teacher) => (
+              <div className="surface-card" key={teacher.name} style={{ background: "rgba(45, 141, 130, 0.12)" }}>
+                <span className="chip">{teacher.occupancy}% ocupação</span>
+                <strong>{teacher.name}</strong>
+                <small className="muted">{teacher.classes} aulas no período</small>
+              </div>
+            )) : (
+              <div className="empty-state">A agenda ainda não possui turmas suficientes para exibir professoras.</div>
+            )}
           </div>
         </article>
 
@@ -229,11 +236,11 @@ export function DashboardShell({ data }: { data: DashboardPayload }) {
             </div>
             <div className="surface-card" style={{ flex: 1 }}>
               <strong>Sincronização</strong>
-              <p className="muted">Um cron chama `/api/sync` a cada 6 horas. O navegador lê o banco, não a EVO.</p>
+              <p className="muted">O Supabase sincroniza a EVO internamente. O dashboard consulta somente o banco histórico.</p>
             </div>
           </div>
           <div className="secure-note">
-            <strong>Segurança:</strong> o token da EVO fica só no backend e nas variáveis do deploy. Nada sensível vai para o navegador.
+            <strong>Segurança:</strong> o token da EVO fica somente no Supabase Vault e nunca chega à Vercel ou ao navegador. Nada sensível vai para o navegador.
           </div>
         </article>
 
