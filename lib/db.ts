@@ -1,21 +1,27 @@
-import { Pool } from "pg";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getEnv } from "@/lib/env";
 
 declare global {
-  var koraPool: Pool | undefined;
+  var koraSupabase: SupabaseClient | undefined;
 }
 
-export function getPool() {
-  if (!global.koraPool) {
+export function getSupabaseAdmin() {
+  if (!global.koraSupabase) {
     const env = getEnv();
-    const isLocal =
-      env.POSTGRES_URL.includes("localhost") ||
-      env.POSTGRES_URL.includes("127.0.0.1");
+    const supabaseUrl = env.SUPABASE_URL;
+    const serviceKey = env.SUPABASE_SECRET_KEY ?? env.SUPABASE_SERVICE_ROLE_KEY;
 
-    global.koraPool = new Pool({
-      connectionString: env.POSTGRES_URL,
-      ssl: isLocal ? false : true
+    if (!supabaseUrl || !serviceKey) {
+      throw new Error("Configure SUPABASE_URL e SUPABASE_SECRET_KEY na Vercel.");
+    }
+
+    global.koraSupabase = createClient(supabaseUrl, serviceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
     });
   }
-  return global.koraPool;
+
+  return global.koraSupabase;
 }
