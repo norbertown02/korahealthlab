@@ -12,6 +12,7 @@ create table if not exists sync_runs (
 
 create table if not exists fact_entries (
   id bigserial primary key,
+  source_key text not null unique,
   id_member integer,
   member_name text,
   entry_date date,
@@ -28,6 +29,7 @@ create index if not exists fact_entries_member_idx on fact_entries (id_member);
 
 create table if not exists fact_aggregator_checkins (
   id bigserial primary key,
+  source_key text not null unique,
   id_member integer,
   member_name text,
   aggregator_name text,
