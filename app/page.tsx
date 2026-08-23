@@ -1,33 +1,41 @@
 import { DashboardShell } from "@/components/dashboard-shell";
 import { getDashboardFromSupabase } from "@/lib/supabase-dashboard";
-import type { DashboardPayload } from "@/lib/types";
+import type { DashboardFilters, DashboardPayload } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
+type PageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function value(params: Record<string, string | string[] | undefined>, key: string) {
+  const item = params[key];
+  return Array.isArray(item) ? item[0] : item;
+}
+
+export default async function HomePage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const classType = value(params, "classType");
+  const filters: DashboardFilters = {
+    start: value(params, "start"),
+    end: value(params, "end"),
+    classType: classType === "hot-sculpt" || classType === "yoga" ? classType : "all"
+  };
+
   let payload: DashboardPayload | null = null;
-  let setupMessage: string | null = null;
-
   try {
-    payload = await getDashboardFromSupabase();
+    payload = await getDashboardFromSupabase(filters);
   } catch {
-    setupMessage = "Não foi possível consultar os dados salvos no Supabase. Tente atualizar a página em instantes.";
-  }
-
-  if (!payload) {
     return (
       <main className="page-shell">
-        <section className="hero">
-          <div className="eyebrow">Kora Health Lab • BI online</div>
-          <h1>Dados em preparação.</h1>
-          <p className="hero-copy">
-            O painel consulta exclusivamente o histórico salvo no Supabase.
-          </p>
-          {setupMessage ? <p className="hero-copy">{setupMessage}</p> : null}
+        <section className="loading-shell">
+          <p className="eyebrow">Kora Health Lab</p>
+          <h1>Não foi possível carregar este recorte.</h1>
+          <p>Atualize a página em instantes. O painel consulta somente o histórico salvo no Supabase.</p>
         </section>
       </main>
     );
   }
 
-  return <DashboardShell data={payload} />;
+  return <DashboardShell data={payload} filters={filters} />;
 }
