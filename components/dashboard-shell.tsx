@@ -19,6 +19,7 @@ export function DashboardShell({
   filters: DashboardFilters;
 }) {
   const studio = data.studio;
+  const customers = data.customers;
   const maxOrigin = Math.max(1, ...data.originEntries.map((item) => item.value));
   const maxTime = Math.max(1, ...(studio?.timeWindows.map((item) => item.occupancy) ?? [1]));
   const maxTeacher = Math.max(1, ...(studio?.teachers.map((item) => item.occupancy) ?? [1]));
@@ -228,6 +229,39 @@ export function DashboardShell({
                 <small>{group.note}</small>
               </div>
             ))}
+          </div>
+        </article>
+
+        <article className="report-card card-wide client-intelligence">
+          <div className="section-title">
+            <div>
+              <p className="kicker">Base de clientes</p>
+              <h2>Frequência, ativação e valor de recorrência</h2>
+            </div>
+            <p>{customers?.note ?? "A análise de clientes será exibida assim que o histórico estiver disponível."}</p>
+          </div>
+          <div className="client-kpis">
+            <div><span>Base total</span><strong>{customers ? format(customers.totalClients) : "—"}</strong><small>clientes desde abril</small></div>
+            <div><span>Ativos no recorte</span><strong>{customers ? format(customers.activeClients) : "—"}</strong><small>ao menos uma visita</small></div>
+            <div><span>Frequência média</span><strong>{customers ? customers.averageFrequency : "—"}</strong><small>dias ativos por cliente</small></div>
+            <div><span>Ritmo semanal</span><strong>{customers ? customers.weeklyFrequency : "—"}</strong><small>dias ativos por semana</small></div>
+            <div><span>Ativação em 7 dias</span><strong>{customers?.activation7 === null || !customers ? "—" : `${customers.activation7}%`}</strong><small>voltaram após 1ª visita</small></div>
+            <div><span>Ativação em 30 dias</span><strong>{customers?.activation30 === null || !customers ? "—" : `${customers.activation30}%`}</strong><small>voltaram em até 30 dias</small></div>
+          </div>
+          {customers?.quality === "partial" ? <div className="data-caveat">Histórico em completamento: meses pendentes ({customers.missingMonths.join(", ")}). Frequência e ranking do recorte são reais; churn e retenção de longo prazo aguardam a série contínua.</div> : null}
+          <div className="client-bottom">
+            <div>
+              <p className="mini-title">Distribuição de frequência</p>
+              <div className="frequency-bands">
+                {(customers?.frequencyBands ?? []).map((band) => <div className={`frequency-band ${band.tone}`} key={band.label}><strong>{format(band.clients)}</strong><span>{band.label}</span></div>)}
+              </div>
+            </div>
+            <div>
+              <p className="mini-title">Clientes mais frequentes no recorte</p>
+              <div className="client-ranking">
+                {(customers?.ranking ?? []).slice(0, 5).map((client, index) => <div key={client.name}><em>{String(index + 1).padStart(2, "0")}</em><span>{client.name}</span><b>{client.visits} dias</b><small>{client.totalVisits} no histórico</small></div>)}
+              </div>
+            </div>
           </div>
         </article>
 
