@@ -87,9 +87,9 @@ export function DashboardShell({
           <h2>O que merece atenção agora.</h2>
         </div>
         <div className="signal-cards">
-          {(data.actions.length ? data.actions : [{ tone: "base", title: "Histórico em construção", detail: "Os sinais de decisão aparecem conforme as aulas são sincronizadas." }]).map((item) => (
+          {(data.actions.length ? data.actions : [{ tag: "base", title: "Histórico em construção", detail: "Os sinais de decisão aparecem conforme as aulas são sincronizadas." }]).map((item) => (
             <article className="signal-card" key={item.title}>
-              <span className={`signal-tag ${item.tone}`}>{item.tone}</span>
+              <span className={`signal-tag ${item.tag}`}>{item.tag}</span>
               <h3>{item.title}</h3>
               <p>{item.detail}</p>
             </article>
