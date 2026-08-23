@@ -1,9 +1,11 @@
-import type { DashboardFilters, DashboardPayload, StudioInsights } from "@/lib/types";
+import type { CustomerInsights, DashboardFilters, DashboardPayload, StudioInsights } from "@/lib/types";
 
 const dashboardEndpoint =
   "https://ovquzagoddwgqixtmkbr.supabase.co/functions/v1/kora-dashboard-secure";
 const studioEndpoint =
   "https://ovquzagoddwgqixtmkbr.supabase.co/functions/v1/kora-studio-insights";
+const customerEndpoint =
+  "https://ovquzagoddwgqixtmkbr.supabase.co/functions/v1/kora-customer-insights";
 
 function searchParams(filters: DashboardFilters) {
   const params = new URLSearchParams();
@@ -27,21 +29,24 @@ export async function getDashboardFromSupabase(
       cache: "no-store"
     });
 
-  const [dashboardResponse, studioResponse] = await Promise.all([
+  const [dashboardResponse, studioResponse, customerResponse] = await Promise.all([
     request(dashboardEndpoint),
-    request(studioEndpoint)
+    request(studioEndpoint),
+    request(customerEndpoint)
   ]);
 
-  if (!dashboardResponse.ok || !studioResponse.ok) {
+  if (!dashboardResponse.ok || !studioResponse.ok || !customerResponse.ok) {
     throw new Error("Não foi possível carregar os dados salvos no Supabase.");
   }
 
   const dashboard = (await dashboardResponse.json()) as DashboardPayload;
   const studio = (await studioResponse.json()) as StudioInsights;
+  const customers = (await customerResponse.json()) as CustomerInsights;
 
   return {
     ...dashboard,
     studio,
+    customers,
     teachers: studio.teachers.map((teacher) => ({
       name: teacher.name,
       classes: teacher.classes,
