@@ -9,6 +9,7 @@ export type DashboardMetric = {
 export type WeekdayMetric = {
   day: string;
   entries: number;
+  averageEntries?: number;
   uniqueClients: number;
   aggregatorShare: number;
 };
@@ -30,6 +31,13 @@ export type MonthlyMetric = {
   month: string;
   entries: number;
   sales: number;
+};
+
+export type WeeklyTrendMetric = {
+  week: string;
+  label: string;
+  entries: number | null;
+  available: boolean;
 };
 
 export type SegmentMetric = {
@@ -106,6 +114,9 @@ export type DashboardPayload = {
   originEntries: ChannelMetric[];
   slotMix: SlotMetric[];
   monthly: MonthlyMetric[];
+  weeklyTrend?: WeeklyTrendMetric[];
+  weeklyTrendStart?: string;
+  totalSalesValue?: number;
   customerGroups: SegmentMetric[];
   teachers: Array<{
     name: string;
