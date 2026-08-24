@@ -192,7 +192,7 @@ export function DashboardShell({
           </div>
         </article>
 
-        <article className="report-card card-wide">
+        <article className="report-card card-full">
           <div className="section-title">
             <div>
               <p className="kicker">Professoras</p>
@@ -232,7 +232,7 @@ export function DashboardShell({
           </div>
         </article>
 
-        <article className="report-card card-wide client-intelligence">
+        <article className="report-card card-full client-intelligence">
           <div className="section-title">
             <div>
               <p className="kicker">Base de clientes</p>
