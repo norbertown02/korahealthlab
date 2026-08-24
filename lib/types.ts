@@ -1,64 +1,35 @@
 export type OriginKey = "contract" | "wellhub" | "totalpass" | "classpass" | "other";
 
-export type DashboardMetric = {
-  label: string;
-  value: string;
+export type DashboardMetric = { label: string; value: string; note: string };
+export type WeekdayMetric = { day: string; entries: number; averageEntries?: number | null; uniqueClients: number; aggregatorShare: number };
+export type ChannelMetric = { label: string; value: number; tone: string };
+export type SlotMetric = { slot: string; entries: number; uniqueClients: number; mix: Record<OriginKey, number> };
+export type MonthlyMetric = { month: string; entries: number; sales: number };
+export type WeeklyTrendMetric = { week: string; label: string; entries: number | null; available: boolean };
+export type RevenueInsight = {
+  salesCount: number;
+  totalValue: number;
+  averageTicket: number;
+  buyers: number;
+  revenuePerBuyer: number;
+  enrollments: number;
+  reenrollments: number;
+  onlineSales: number;
+  teamSales: number;
+  weekly: Array<{ week: string; label: string; sales: number; value: number }>;
+  topProducts: Array<{ name: string; quantity: number; value: number }>;
   note: string;
 };
-
-export type WeekdayMetric = {
-  day: string;
-  entries: number;
-  averageEntries?: number;
-  uniqueClients: number;
-  aggregatorShare: number;
-};
-
-export type ChannelMetric = {
+export type RetentionStage = {
+  visits: number;
   label: string;
-  value: number;
-  tone: string;
+  clients: number;
+  shareOfBase: number;
+  conversionFromPrevious: number;
 };
-
-export type SlotMetric = {
-  slot: string;
-  entries: number;
-  uniqueClients: number;
-  mix: Record<OriginKey, number>;
-};
-
-export type MonthlyMetric = {
-  month: string;
-  entries: number;
-  sales: number;
-};
-
-export type WeeklyTrendMetric = {
-  week: string;
-  label: string;
-  entries: number | null;
-  available: boolean;
-};
-
-export type SegmentMetric = {
-  title: string;
-  value: number;
-  note: string;
-  accent: string;
-};
-
-export type ActionMetric = {
-  title: string;
-  tag: string;
-  detail: string;
-};
-
-export type SourceStatus = {
-  name: string;
-  endpoint: string;
-  usage: string;
-  status: string;
-};
+export type SegmentMetric = { title: string; value: number; note: string; accent: string };
+export type ActionMetric = { title: string; tag: string; detail: string };
+export type SourceStatus = { name: string; endpoint: string; usage: string; status: string };
 
 export type CustomerInsights = {
   filters: { start: string; end: string; observedEnd: string };
@@ -117,13 +88,11 @@ export type DashboardPayload = {
   weeklyTrend?: WeeklyTrendMetric[];
   weeklyTrendStart?: string;
   totalSalesValue?: number;
+  revenue?: RevenueInsight;
+  retentionFunnel?: RetentionStage[];
+  retentionNote?: string;
   customerGroups: SegmentMetric[];
-  teachers: Array<{
-    name: string;
-    classes: number;
-    occupancy: number;
-    returnRate: number;
-  }>;
+  teachers: Array<{ name: string; classes: number; occupancy: number; returnRate: number }>;
   actions: ActionMetric[];
   sources: SourceStatus[];
   filters?: { start: string; end: string };
@@ -142,7 +111,6 @@ export type EvoEntry = {
   device?: string | null;
   [key: string]: unknown;
 };
-
 export type EvoAggregatorCheckin = {
   idMember?: number | null;
   name?: string | null;
@@ -154,7 +122,6 @@ export type EvoAggregatorCheckin = {
   tokenUsed?: string | null;
   [key: string]: unknown;
 };
-
 export type EvoSaleItem = {
   item?: string | null;
   description?: string | null;
@@ -162,12 +129,7 @@ export type EvoSaleItem = {
   saleValueWithoutCreditValue?: number | null;
   quantity?: number | null;
 };
-
-export type EvoReceivable = {
-  ammount?: number | null;
-  ammountPaid?: number | null;
-};
-
+export type EvoReceivable = { ammount?: number | null; ammountPaid?: number | null };
 export type EvoSale = {
   idSale: number;
   idMember?: number | null;
@@ -179,8 +141,4 @@ export type EvoSale = {
   receivables?: EvoReceivable[] | null;
   [key: string]: unknown;
 };
-
-export type SyncWindow = {
-  dateStart: string;
-  dateEnd: string;
-};
+export type SyncWindow = { dateStart: string; dateEnd: string };
