@@ -1,0 +1,29 @@
+.revenue-card { background: linear-gradient(135deg, rgba(247,241,231,.96), rgba(230,236,219,.9)); }
+.revenue-kpis { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); border-top:1px solid var(--line); border-left:1px solid var(--line); }
+.revenue-kpis > div { min-height:118px; padding:15px 12px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
+.revenue-kpis span,.revenue-mix-grid span { display:block; color:var(--muted); font:10px/1.35 var(--mono); letter-spacing:.08em; text-transform:uppercase; }
+.revenue-kpis strong { display:block; margin:13px 0 6px; color:var(--olive); font:600 28px/.95 var(--display); letter-spacing:-.04em; }
+.revenue-kpis small { color:var(--muted); font-size:10px; }
+.revenue-body { display:grid; grid-template-columns:1.25fr .75fr; gap:30px; margin-top:24px; }
+.revenue-weekly { min-height:220px; display:flex; align-items:end; gap:12px; border-bottom:1px solid var(--line); padding:0 4px 10px; }
+.revenue-week { flex:1; min-width:74px; text-align:center; display:grid; gap:6px; }
+.revenue-week-bar { height:145px; display:flex; align-items:end; justify-content:center; background:linear-gradient(180deg,rgba(170,178,141,.08),rgba(170,178,141,.18)); }
+.revenue-week-bar i { width:64%; display:block; background:linear-gradient(180deg,#9cab7e,#33402c); min-height:4px; }
+.revenue-week b { color:var(--olive); font:500 13px/1 var(--display); }.revenue-week span { font:9px/1 var(--mono); color:var(--muted); }.revenue-week small { color:var(--muted); font-size:9px; }
+.revenue-mix-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.revenue-mix-grid > div { padding:16px; background:rgba(255,253,248,.72); border:1px solid var(--line); }
+.revenue-mix-grid strong { display:block; margin-top:10px; color:var(--olive); font:600 28px/1 var(--display); }
+.products-title { margin-top:22px; }
+.product-ranking { display:grid; border-top:1px solid var(--line); }
+.product-ranking > div { display:grid; grid-template-columns:30px minmax(0,1fr) auto auto; gap:12px; align-items:center; min-height:42px; border-bottom:1px solid var(--line); font-size:11px; }
+.product-ranking em { color:#a77c59; font:10px/1 var(--mono); font-style:normal; }.product-ranking b { color:var(--olive); }.product-ranking small { color:var(--muted); }
+.retention-card { background:linear-gradient(135deg,#22301e,#45543a); color:#f8f2e8; }
+.retention-card .section-title h2 { color:#f8f2e8; }.retention-card .section-title > p { color:rgba(248,242,232,.7); }.retention-card .kicker { color:#cbd5b1; }
+.retention-funnel { display:grid; gap:8px; }
+.retention-stage { display:grid; grid-template-columns:minmax(0,1fr) 180px; gap:14px; align-items:center; }
+.retention-fill { min-width:150px; min-height:58px; padding:10px 14px; display:grid; grid-template-columns:1fr auto; gap:4px 12px; align-items:center; background:linear-gradient(90deg,#d59670,#b9623e); transition:width .25s ease; }
+.retention-fill span { font:500 13px/1 var(--mono); text-transform:uppercase; letter-spacing:.05em; }.retention-fill strong { font:600 27px/1 var(--display); }.retention-fill small { grid-column:1/-1; color:rgba(255,255,255,.76); font-size:10px; }
+.retention-conversion { padding:8px 0 8px 14px; border-left:1px solid rgba(255,255,255,.2); }.retention-conversion b { display:block; color:#e7d3b2; font:600 22px/1 var(--display); }.retention-conversion span { color:rgba(248,242,232,.58); font-size:10px; }
+.retention-card .data-caveat { background:rgba(255,255,255,.08); color:#eadfce; border-left-color:#d59670; }
+@media (max-width:1000px){ .revenue-kpis{grid-template-columns:repeat(3,1fr)} .revenue-body{grid-template-columns:1fr} }
+@media (max-width:700px){ .revenue-kpis{grid-template-columns:repeat(2,1fr)} .revenue-weekly{overflow-x:auto;justify-content:flex-start}.revenue-week{min-width:90px}.retention-stage{grid-template-columns:1fr}.retention-conversion{border-left:0;border-top:1px solid rgba(255,255,255,.18);padding:8px 0}.product-ranking > div{grid-template-columns:28px 1fr auto}.product-ranking small{display:none} }
