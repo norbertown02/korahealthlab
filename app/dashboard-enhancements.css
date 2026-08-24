@@ -1,0 +1,127 @@
+.origin-row > div {
+  position: relative;
+  overflow: hidden;
+  min-height: 12px;
+  background: rgba(51,64,44,.10);
+  border-radius: 999px;
+}
+.origin-row i {
+  display: block;
+  height: 100%;
+  min-width: 3px;
+  border-radius: inherit;
+}
+
+.weekday-average {
+  color: var(--olive) !important;
+  font-weight: 600;
+}
+
+.weekly-trend-card {
+  overflow: hidden;
+}
+.weekly-trend {
+  height: 250px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(28px, 1fr));
+  gap: 7px;
+  align-items: end;
+  padding: 18px 0 0;
+  border-bottom: 1px solid var(--line);
+}
+.weekly-point {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 205px 24px;
+  align-items: end;
+  text-align: center;
+}
+.weekly-bar-wrap {
+  height: 205px;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  padding: 0 2px;
+  background: linear-gradient(to top, rgba(51,64,44,.04), transparent 55%);
+}
+.weekly-bar-wrap i {
+  width: 100%;
+  max-width: 28px;
+  min-height: 3px;
+  display: block;
+  background: linear-gradient(180deg, var(--clay), var(--olive));
+  transition: transform .18s ease;
+}
+.weekly-point:hover .weekly-bar-wrap i {
+  transform: translateY(-3px);
+}
+.weekly-point > span {
+  padding-top: 8px;
+  color: var(--muted);
+  font: 9px/1 var(--mono);
+  white-space: nowrap;
+}
+.weekly-point .ghost-label {
+  color: transparent;
+}
+.weekly-point.missing .weekly-bar-wrap {
+  position: relative;
+  background: repeating-linear-gradient(135deg, rgba(102,112,95,.07) 0 6px, transparent 6px 12px);
+}
+.weekly-point.missing .weekly-bar-wrap::after {
+  content: "";
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: 2px;
+  border-bottom: 2px dashed rgba(102,112,95,.35);
+}
+.weekly-legend {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 13px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.weekly-legend span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.weekly-legend i {
+  width: 18px;
+  height: 6px;
+  display: inline-block;
+  background: var(--olive);
+}
+.weekly-legend .missing-key {
+  height: 0;
+  background: transparent;
+  border-bottom: 2px dashed rgba(102,112,95,.5);
+}
+
+@media (max-width: 900px) {
+  .weekly-trend {
+    overflow-x: auto;
+    grid-template-columns: repeat(var(--weeks, 24), minmax(30px, 30px));
+  }
+  .weekly-point {
+    width: 30px;
+  }
+}
+
+@media (max-width: 700px) {
+  .weekday-col small {
+    display: block !important;
+  }
+  .weekly-trend {
+    height: 220px;
+  }
+  .weekly-point {
+    grid-template-rows: 175px 24px;
+  }
+  .weekly-bar-wrap {
+    height: 175px;
+  }
+}
