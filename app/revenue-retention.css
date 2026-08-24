@@ -1,3 +1,7 @@
+.section-marker { padding:18px 4px 6px; background:transparent; border:0; box-shadow:none; }
+.section-marker .kicker { margin-bottom:6px; color:#9b765c; }
+.section-marker h2 { margin:0; color:var(--olive); font:600 clamp(30px,3.5vw,48px)/.95 var(--display); letter-spacing:-.05em; }
+
 .revenue-card { background: linear-gradient(135deg, rgba(247,241,231,.96), rgba(230,236,219,.9)); }
 .revenue-kpis { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); border-top:1px solid var(--line); border-left:1px solid var(--line); }
 .revenue-kpis > div { min-height:118px; padding:15px 12px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
@@ -17,6 +21,12 @@
 .product-ranking { display:grid; border-top:1px solid var(--line); }
 .product-ranking > div { display:grid; grid-template-columns:30px minmax(0,1fr) auto auto; gap:12px; align-items:center; min-height:42px; border-bottom:1px solid var(--line); font-size:11px; }
 .product-ranking em { color:#a77c59; font:10px/1 var(--mono); font-style:normal; }.product-ranking b { color:var(--olive); }.product-ranking small { color:var(--muted); }
+
+.teacher-recurrence-note { display:grid; grid-template-columns:1fr 1.1fr; gap:18px; margin-top:24px; padding:18px; border:1px solid var(--line); background:linear-gradient(105deg,rgba(213,180,142,.16),rgba(207,214,184,.24)); }
+.teacher-recurrence-note strong { display:block; margin:5px 0 7px; color:var(--olive); font:600 23px/1 var(--display); }
+.teacher-recurrence-note span,.teacher-recurrence-note small { color:var(--muted); font-size:11px; line-height:1.5; }
+.teacher-recurrence-note small { align-self:end; }
+
 .retention-card { background:linear-gradient(135deg,#22301e,#45543a); color:#f8f2e8; }
 .retention-card .section-title h2 { color:#f8f2e8; }.retention-card .section-title > p { color:rgba(248,242,232,.7); }.retention-card .kicker { color:#cbd5b1; }
 .retention-funnel { display:grid; gap:8px; }
@@ -25,5 +35,6 @@
 .retention-fill span { font:500 13px/1 var(--mono); text-transform:uppercase; letter-spacing:.05em; }.retention-fill strong { font:600 27px/1 var(--display); }.retention-fill small { grid-column:1/-1; color:rgba(255,255,255,.76); font-size:10px; }
 .retention-conversion { padding:8px 0 8px 14px; border-left:1px solid rgba(255,255,255,.2); }.retention-conversion b { display:block; color:#e7d3b2; font:600 22px/1 var(--display); }.retention-conversion span { color:rgba(248,242,232,.58); font-size:10px; }
 .retention-card .data-caveat { background:rgba(255,255,255,.08); color:#eadfce; border-left-color:#d59670; }
-@media (max-width:1000px){ .revenue-kpis{grid-template-columns:repeat(3,1fr)} .revenue-body{grid-template-columns:1fr} }
+
+@media (max-width:1000px){ .revenue-kpis{grid-template-columns:repeat(3,1fr)} .revenue-body{grid-template-columns:1fr} .teacher-recurrence-note{grid-template-columns:1fr} }
 @media (max-width:700px){ .revenue-kpis{grid-template-columns:repeat(2,1fr)} .revenue-weekly{overflow-x:auto;justify-content:flex-start}.revenue-week{min-width:90px}.retention-stage{grid-template-columns:1fr}.retention-conversion{border-left:0;border-top:1px solid rgba(255,255,255,.18);padding:8px 0}.product-ranking > div{grid-template-columns:28px 1fr auto}.product-ranking small{display:none} }
