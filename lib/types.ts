@@ -37,6 +37,9 @@ export type CustomerInsights = {
   missingMonths: string[];
   totalClients: number;
   activeClients: number;
+  periodVisitors: number;
+  recentOneVisitClients: number;
+  inactive30Plus: number;
   returningClients: number;
   newClients: number;
   averageFrequency: number;
