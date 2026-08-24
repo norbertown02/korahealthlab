@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./dashboard-enhancements.css";
+import "./revenue-retention.css";
 
 export const metadata: Metadata = {
   title: "Kora Health Lab BI",
