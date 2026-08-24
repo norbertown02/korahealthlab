@@ -7,15 +7,12 @@ const classOptions = [
   { value: "yoga", label: "Yoga" }
 ] as const;
 
-function format(value: number) {
-  return value.toLocaleString("pt-BR");
-}
-
+function format(value: number) { return value.toLocaleString("pt-BR"); }
+function money(value: number) { return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
 function periodObservedEnd(periodLabel: string, fallback: string) {
   const match = periodLabel.match(/(\d{2})\/(\d{2})\/(\d{4})\s*$/);
   return match ? `${match[3]}-${match[2]}-${match[1]}` : fallback;
 }
-
 function weekdayOccurrences(start: string, end: string, weekdayIndex: number) {
   if (!start || !end || end < start) return 0;
   let count = 0;
@@ -31,6 +28,8 @@ function weekdayOccurrences(start: string, end: string, weekdayIndex: number) {
 export function DashboardShell({ data, filters }: { data: DashboardPayload; filters: DashboardFilters }) {
   const studio = data.studio;
   const customers = data.customers;
+  const revenue = data.revenue;
+  const funnel = data.retentionFunnel ?? [];
   const maxOrigin = Math.max(1, ...data.originEntries.map((item) => item.value));
   const maxTime = Math.max(1, ...(studio?.timeWindows.map((item) => item.occupancy) ?? [1]));
   const maxTeacher = Math.max(1, ...(studio?.teachers.map((item) => item.occupancy) ?? [1]));
@@ -41,6 +40,8 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
   const weekly = data.weeklyTrend ?? [];
   const weeklyValues = weekly.flatMap((item) => item.entries === null ? [] : [item.entries]);
   const weeklyMax = Math.max(1, ...weeklyValues);
+  const revenueMax = Math.max(1, ...(revenue?.weekly.map((item) => item.value) ?? [1]));
+  const funnelBase = funnel[0]?.clients ?? 1;
 
   return (
     <main className="kora-report">
@@ -50,11 +51,7 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
       </header>
 
       <section className="hero-kora">
-        <div className="hero-copy-kora">
-          <p className="kicker">Kora Health Lab / visão de gestão</p>
-          <h1>O corpo da operação,<br /><i>visto com calma.</i></h1>
-          <p className="hero-description">Leia demanda, capacidade e recorrência para decidir onde expandir, ajustar ou proteger a experiência do estúdio.</p>
-        </div>
+        <div className="hero-copy-kora"><p className="kicker">Kora Health Lab / visão de gestão</p><h1>O corpo da operação,<br /><i>visto com calma.</i></h1><p className="hero-description">Leia demanda, capacidade e recorrência para decidir onde expandir, ajustar ou proteger a experiência do estúdio.</p></div>
         <div className="hero-orbit" aria-hidden="true"><span className="orbit-label">MOVIMENTO<br />COM INTENÇÃO</span><span className="orbit-ring ring-a" /><span className="orbit-ring ring-b" /></div>
         <div className="hero-stat"><span>recorte atual</span><strong>{data.periodLabel}</strong><small>{data.heroMix}</small></div>
       </section>
@@ -69,16 +66,10 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
 
       <section className="signal-row">
         <div className="signal-intro"><p className="kicker">Sinais do período</p><h2>O que merece atenção agora.</h2></div>
-        <div className="signal-cards">
-          {(data.actions.length ? data.actions : [{ tag: "base", title: "Histórico em construção", detail: "Os sinais de decisão aparecem conforme as aulas são sincronizadas." }]).map((item) => (
-            <article className="signal-card" key={item.title}><span className={`signal-tag ${item.tag}`}>{item.tag}</span><h3>{item.title}</h3><p>{item.detail}</p></article>
-          ))}
-        </div>
+        <div className="signal-cards">{(data.actions.length ? data.actions : [{ tag: "base", title: "Histórico em construção", detail: "Os sinais de decisão aparecem conforme as aulas são sincronizadas." }]).map((item) => <article className="signal-card" key={item.title}><span className={`signal-tag ${item.tag}`}>{item.tag}</span><h3>{item.title}</h3><p>{item.detail}</p></article>)}</div>
       </section>
 
-      <section className="metric-ribbon">
-        {data.summaryCards.slice(0, 7).map((item, index) => <article className={`ribbon-card ribbon-${index}`} key={item.label}><span>{item.label}</span><strong>{item.value}</strong><small>{item.note}</small></article>)}
-      </section>
+      <section className="metric-ribbon">{data.summaryCards.slice(0, 7).map((item, index) => <article className={`ribbon-card ribbon-${index}`} key={item.label}><span>{item.label}</span><strong>{item.value}</strong><small>{item.note}</small></article>)}</section>
 
       <section className="report-grid">
         <article className="report-card card-wide card-dark">
@@ -100,23 +91,35 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
 
         <article className="report-card card-half">
           <div className="section-title"><div><p className="kicker">Ritmo semanal</p><h2>Onde a semana responde</h2></div><p>Total no recorte e média por ocorrência de cada dia já observado.</p></div>
-          <div className="weekday-strip">{data.weekday.map((day, index) => {
-            const height = Math.max(14, day.entries / Math.max(1, ...data.weekday.map((item) => item.entries)) * 112);
-            const occurrences = weekdayOccurrences(start, observedEnd, index);
-            const average = occurrences ? Math.round((day.entries / occurrences) * 10) / 10 : 0;
-            return <div className="weekday-col" key={day.day}><div className="weekday-bar" style={{ height }}><span>{day.entries}</span></div><b>{day.day}</b><small className="weekday-average">{day.entries === 0 ? "sem operação" : `média ${average}`}</small><small>{day.aggregatorShare}% parceiros</small></div>;
-          })}</div>
+          <div className="weekday-strip">{data.weekday.map((day, index) => { const height = Math.max(14, day.entries / Math.max(1, ...data.weekday.map((item) => item.entries)) * 112); const occurrences = weekdayOccurrences(start, observedEnd, index); const average = occurrences ? Math.round((day.entries / occurrences) * 10) / 10 : 0; return <div className="weekday-col" key={day.day}><div className="weekday-bar" style={{ height }}><span>{day.entries}</span></div><b>{day.day}</b><small className="weekday-average">{day.entries === 0 ? "sem operação" : `média ${average}`}</small><small>{day.aggregatorShare}% parceiros</small></div>; })}</div>
         </article>
 
         <article className="report-card card-full weekly-trend-card">
           <div className="section-title"><div><p className="kicker">Evolução de acessos</p><h2>Acessos totais por semana</h2></div><p>Janela de até 6 meses. Semanas de meses ainda não carregados aparecem como lacunas.</p></div>
-          <div className="weekly-trend">
-            {weekly.map((item, index) => <div className={`weekly-point ${item.entries === null ? "missing" : ""}`} key={item.week} title={item.entries === null ? `${item.label}: histórico pendente` : `${item.label}: ${item.entries} acessos`}>
-              <div className="weekly-bar-wrap"><i style={{ height: item.entries === null ? "0%" : `${Math.max(3, (item.entries / weeklyMax) * 100)}%` }} /></div>
-              {(index % 2 === 0 || index === weekly.length - 1) ? <span>{item.label}</span> : <span className="ghost-label">·</span>}
-            </div>)}
-          </div>
+          <div className="weekly-trend">{weekly.map((item, index) => <div className={`weekly-point ${item.entries === null ? "missing" : ""}`} key={item.week} title={item.entries === null ? `${item.label}: histórico pendente` : `${item.label}: ${item.entries} acessos`}><div className="weekly-bar-wrap"><i style={{ height: item.entries === null ? "0%" : `${Math.max(3, (item.entries / weeklyMax) * 100)}%` }} /></div>{(index % 2 === 0 || index === weekly.length - 1) ? <span>{item.label}</span> : <span className="ghost-label">·</span>}</div>)}</div>
           <div className="weekly-legend"><span><i />Semana com histórico</span><span><i className="missing-key" />Histórico pendente</span></div>
+        </article>
+
+        <article className="report-card card-full revenue-card">
+          <div className="section-title"><div><p className="kicker">Receita</p><h2>Performance comercial do período</h2></div><p>{revenue?.note ?? "Sem dados de venda no recorte."}</p></div>
+          <div className="revenue-kpis">
+            <div><span>Valor vendido</span><strong>{revenue ? money(revenue.totalValue) : "—"}</strong><small>{revenue?.salesCount ?? 0} vendas</small></div>
+            <div><span>Ticket médio</span><strong>{revenue ? money(revenue.averageTicket) : "—"}</strong><small>por venda</small></div>
+            <div><span>Compradores</span><strong>{revenue ? format(revenue.buyers) : "—"}</strong><small>clientes distintos</small></div>
+            <div><span>Receita / comprador</span><strong>{revenue ? money(revenue.revenuePerBuyer) : "—"}</strong><small>no recorte</small></div>
+            <div><span>Matrículas</span><strong>{revenue ? format(revenue.enrollments) : "—"}</strong><small>novos contratos</small></div>
+            <div><span>Renovações</span><strong>{revenue ? format(revenue.reenrollments) : "—"}</strong><small>re-enrollment</small></div>
+          </div>
+          <div className="revenue-body">
+            <div className="revenue-weekly-wrap"><p className="mini-title">Venda semanal</p><div className="revenue-weekly">{(revenue?.weekly ?? []).map((item) => <div className="revenue-week" key={item.week}><div className="revenue-week-bar"><i style={{ height: `${Math.max(4, (item.value / revenueMax) * 100)}%` }} /></div><b>{money(item.value)}</b><span>{item.label}</span><small>{item.sales} vendas</small></div>)}</div></div>
+            <div className="revenue-mix"><p className="mini-title">Origem comercial</p><div className="revenue-mix-grid"><div><span>Site / totem</span><strong>{revenue ? revenue.onlineSales : 0}</strong></div><div><span>Equipe</span><strong>{revenue ? revenue.teamSales : 0}</strong></div></div><p className="mini-title products-title">Produtos / créditos mais vendidos</p><div className="product-ranking">{(revenue?.topProducts ?? []).map((item, index) => <div key={item.name}><em>{String(index + 1).padStart(2, "0")}</em><span>{item.name}</span><b>{item.quantity} un.</b><small>{money(item.value)}</small></div>)}</div></div>
+          </div>
+        </article>
+
+        <article className="report-card card-full retention-card">
+          <div className="section-title"><div><p className="kicker">Retenção</p><h2>Funil de consolidação da frequência</h2></div><p>{data.retentionNote}</p></div>
+          <div className="retention-funnel">{funnel.map((stage, index) => <div className="retention-stage" key={stage.visits}><div className="retention-fill" style={{ width: `${Math.max(8, (stage.clients / funnelBase) * 100)}%` }}><span>{stage.label}</span><strong>{format(stage.clients)}</strong><small>{stage.shareOfBase}% da base</small></div>{index > 0 ? <div className="retention-conversion"><b>{stage.conversionFromPrevious}%</b><span>avançam da etapa anterior</span></div> : <div className="retention-conversion base"><b>100%</b><span>base observada</span></div>}</div>)}</div>
+          <div className="data-caveat">Leitura provisória: duplicidades de identidade e meses históricos ainda em consolidação podem alterar o funil. Use para direção, não como retenção definitiva.</div>
         </article>
 
         <article className="report-card card-full">
@@ -124,10 +127,7 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
           <div className="teacher-table"><div className="teacher-head"><span>Professora</span><span>Aulas</span><span>Ocupação</span><span>Vagas ocupadas</span></div>{(studio?.teachers ?? []).slice(0, 8).map((teacher, index) => <div className="teacher-line" key={teacher.name}><span><em>{String(index + 1).padStart(2, "0")}</em>{teacher.name}</span><span>{teacher.classes}</span><span className="teacher-progress"><i style={{ width: `${(teacher.occupancy / maxTeacher) * 100}%` }} />{teacher.occupancy}%</span><span>{teacher.occupied} / {teacher.capacity}</span></div>)}</div>
         </article>
 
-        <article className="report-card card-half">
-          <div className="section-title"><div><p className="kicker">Comportamento</p><h2>Base e retorno</h2></div><p>Leitura que amadurece junto do histórico.</p></div>
-          <div className="behavior-stack">{data.customerGroups.map((group) => <div className="behavior-item" key={group.title}><span>{group.title}</span><strong>{typeof group.value === "number" ? format(group.value) : group.value}</strong><small>{group.note}</small></div>)}</div>
-        </article>
+        <article className="report-card card-half"><div className="section-title"><div><p className="kicker">Comportamento</p><h2>Base e retorno</h2></div><p>Leitura que amadurece junto do histórico.</p></div><div className="behavior-stack">{data.customerGroups.map((group) => <div className="behavior-item" key={group.title}><span>{group.title}</span><strong>{typeof group.value === "number" ? format(group.value) : group.value}</strong><small>{group.note}</small></div>)}</div></article>
 
         <article className="report-card card-full client-intelligence">
           <div className="section-title"><div><p className="kicker">Base de clientes</p><h2>Frequência, ativação e valor de recorrência</h2></div><p>{customers?.note ?? "A análise de clientes será exibida assim que o histórico estiver disponível."}</p></div>
@@ -137,10 +137,7 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
           <div className="client-bottom"><div><p className="mini-title">Distribuição de frequência</p><div className="frequency-bands">{(customers?.frequencyBands ?? []).map((band) => <div className={`frequency-band ${band.tone}`} key={band.label}><strong>{format(band.clients)}</strong><span>{band.label}</span></div>)}</div></div><div><p className="mini-title">Clientes mais frequentes no recorte</p><div className="client-ranking">{(customers?.ranking ?? []).slice(0, 5).map((client, index) => <div key={client.name}><em>{String(index + 1).padStart(2, "0")}</em><span>{client.name}</span><b>{client.visits} dias</b><small>{client.totalVisits} no histórico</small></div>)}</div></div></div>
         </article>
 
-        <article className="report-card card-full">
-          <div className="section-title"><div><p className="kicker">Histórico</p><h2>Entradas x vendas</h2></div><p>Não compare uma entrada com uma venda: são sinais distintos.</p></div>
-          <div className="month-compare">{data.monthly.map((month) => { const max = Math.max(1, ...data.monthly.map((item) => item.entries)); return <div className="month-block" key={month.month}><div className="month-stacks"><i className="entry" style={{ height: `${(month.entries / max) * 116}px` }} /><i className="sales" style={{ height: `${Math.max(12, month.sales / max * 116)}px` }} /></div><b>{month.month}</b><small>{month.entries} acessos / {month.sales} vendas</small></div>; })}</div>
-        </article>
+        <article className="report-card card-full"><div className="section-title"><div><p className="kicker">Histórico</p><h2>Entradas x vendas</h2></div><p>Não compare uma entrada com uma venda: são sinais distintos.</p></div><div className="month-compare">{data.monthly.map((month) => { const max = Math.max(1, ...data.monthly.map((item) => item.entries)); return <div className="month-block" key={month.month}><div className="month-stacks"><i className="entry" style={{ height: `${(month.entries / max) * 116}px` }} /><i className="sales" style={{ height: `${Math.max(12, month.sales / max * 116)}px` }} /></div><b>{month.month}</b><small>{month.entries} acessos / {month.sales} vendas</small></div>; })}</div></article>
       </section>
 
       <footer className="report-footer"><div><KoraLogo className="footer-logo" /></div><p>Dados operacionais armazenados no Supabase. A EVO é consultada somente pela sincronização interna.</p><span>ÚLTIMA VISÃO: {data.periodLabel}</span></footer>
