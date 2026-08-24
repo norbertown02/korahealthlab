@@ -72,6 +72,8 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
       <section className="metric-ribbon">{data.summaryCards.slice(0, 7).map((item, index) => <article className={`ribbon-card ribbon-${index}`} key={item.label}><span>{item.label}</span><strong>{item.value}</strong><small>{item.note}</small></article>)}</section>
 
       <section className="report-grid">
+        <article className="report-card card-full section-marker"><p className="kicker">01 / Acessos</p><h2>Demanda, presença e capacidade</h2></article>
+
         <article className="report-card card-wide card-dark">
           <div className="section-title light-title"><div><p className="kicker">Modalidades</p><h2>Ocupação por prática</h2></div><p>Capacidade ocupada, não apenas entradas no estúdio.</p></div>
           <div className="modality-grid">{(studio?.modalities ?? []).map((modality) => <div className="modality-card" key={modality.key}><div className="modality-top"><span>{modality.name}</span><b>{modality.occupancy}%</b></div><div className="occupancy-track"><span style={{ width: `${modality.occupancy}%` }} /></div><div className="modality-bottom"><span>{format(modality.sessions)} aulas</span><span>{format(modality.occupied)} / {format(modality.capacity)} vagas</span></div></div>)}</div>
@@ -100,6 +102,8 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
           <div className="weekly-legend"><span><i />Semana com histórico</span><span><i className="missing-key" />Histórico pendente</span></div>
         </article>
 
+        <article className="report-card card-full section-marker"><p className="kicker">02 / Receita</p><h2>Performance comercial</h2></article>
+
         <article className="report-card card-full revenue-card">
           <div className="section-title"><div><p className="kicker">Receita</p><h2>Performance comercial do período</h2></div><p>{revenue?.note ?? "Sem dados de venda no recorte."}</p></div>
           <div className="revenue-kpis">
@@ -116,28 +120,43 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
           </div>
         </article>
 
+        <article className="report-card card-full"><div className="section-title"><div><p className="kicker">Histórico comercial</p><h2>Entradas x vendas</h2></div><p>Não compare uma entrada com uma venda: são sinais distintos.</p></div><div className="month-compare">{data.monthly.map((month) => { const max = Math.max(1, ...data.monthly.map((item) => item.entries)); return <div className="month-block" key={month.month}><div className="month-stacks"><i className="entry" style={{ height: `${(month.entries / max) * 116}px` }} /><i className="sales" style={{ height: `${Math.max(12, month.sales / max * 116)}px` }} /></div><b>{month.month}</b><small>{month.entries} acessos / {month.sales} vendas</small></div>; })}</div></article>
+
+        <article className="report-card card-full section-marker"><p className="kicker">03 / Professoras</p><h2>Ocupação e fidelidade à experiência</h2></article>
+
+        <article className="report-card card-full">
+          <div className="section-title"><div><p className="kicker">Professoras</p><h2>Quem sustenta a experiência</h2></div><p>Ranking por ocupação, com volume suficiente para leitura.</p></div>
+          <div className="teacher-table"><div className="teacher-head"><span>Professora</span><span>Aulas</span><span>Ocupação</span><span>Vagas ocupadas</span></div>{(studio?.teachers ?? []).slice(0, 8).map((teacher, index) => <div className="teacher-line" key={teacher.name}><span><em>{String(index + 1).padStart(2, "0")}</em>{teacher.name}</span><span>{teacher.classes}</span><span className="teacher-progress"><i style={{ width: `${(teacher.occupancy / maxTeacher) * 100}%` }} />{teacher.occupancy}%</span><span>{teacher.occupied} / {teacher.capacity}</span></div>)}</div>
+          <div className="teacher-recurrence-note">
+            <div><p className="mini-title">Recorrência por professora</p><strong>Estudo preparado</strong><span>Queremos medir % de clientes que voltam para a mesma professora, frequência média por professora e sobreposição entre professoras.</span></div>
+            <small>Para calcular corretamente precisamos do participante identificado por aula. Hoje a base salva ocupação por sessão, mas não os nomes/IDs dos participantes; por isso não exibimos uma recorrência estimada ou inventada.</small>
+          </div>
+        </article>
+
+        <article className="report-card card-full section-marker"><p className="kicker">04 / Clientes</p><h2>Ativação, recorrência e retenção</h2></article>
+
         <article className="report-card card-full retention-card">
           <div className="section-title"><div><p className="kicker">Retenção</p><h2>Funil de consolidação da frequência</h2></div><p>{data.retentionNote}</p></div>
           <div className="retention-funnel">{funnel.map((stage, index) => <div className="retention-stage" key={stage.visits}><div className="retention-fill" style={{ width: `${Math.max(8, (stage.clients / funnelBase) * 100)}%` }}><span>{stage.label}</span><strong>{format(stage.clients)}</strong><small>{stage.shareOfBase}% da base</small></div>{index > 0 ? <div className="retention-conversion"><b>{stage.conversionFromPrevious}%</b><span>avançam da etapa anterior</span></div> : <div className="retention-conversion base"><b>100%</b><span>base observada</span></div>}</div>)}</div>
           <div className="data-caveat">Leitura provisória: duplicidades de identidade e meses históricos ainda em consolidação podem alterar o funil. Use para direção, não como retenção definitiva.</div>
         </article>
 
-        <article className="report-card card-full">
-          <div className="section-title"><div><p className="kicker">Professoras</p><h2>Quem sustenta a experiência</h2></div><p>Ranking por ocupação, com volume suficiente para leitura.</p></div>
-          <div className="teacher-table"><div className="teacher-head"><span>Professora</span><span>Aulas</span><span>Ocupação</span><span>Vagas ocupadas</span></div>{(studio?.teachers ?? []).slice(0, 8).map((teacher, index) => <div className="teacher-line" key={teacher.name}><span><em>{String(index + 1).padStart(2, "0")}</em>{teacher.name}</span><span>{teacher.classes}</span><span className="teacher-progress"><i style={{ width: `${(teacher.occupancy / maxTeacher) * 100}%` }} />{teacher.occupancy}%</span><span>{teacher.occupied} / {teacher.capacity}</span></div>)}</div>
-        </article>
-
         <article className="report-card card-half"><div className="section-title"><div><p className="kicker">Comportamento</p><h2>Base e retorno</h2></div><p>Leitura que amadurece junto do histórico.</p></div><div className="behavior-stack">{data.customerGroups.map((group) => <div className="behavior-item" key={group.title}><span>{group.title}</span><strong>{typeof group.value === "number" ? format(group.value) : group.value}</strong><small>{group.note}</small></div>)}</div></article>
 
         <article className="report-card card-full client-intelligence">
-          <div className="section-title"><div><p className="kicker">Base de clientes</p><h2>Frequência, ativação e valor de recorrência</h2></div><p>{customers?.note ?? "A análise de clientes será exibida assim que o histórico estiver disponível."}</p></div>
-          <div className="client-kpis"><div><span>Base observada</span><strong>{customers ? format(customers.totalClients) : "—"}</strong><small>pessoas identificadas no histórico</small></div><div><span>Ativos no recorte</span><strong>{customers ? format(customers.activeClients) : "—"}</strong><small>ao menos um dia de acesso</small></div><div><span>Repetiram no período</span><strong>{customers ? `${customers.repeatRate}%` : "—"}</strong><small>2 ou mais dias de acesso</small></div><div><span>Consistência semanal</span><strong>{customers ? `${customers.consistencyRate}%` : "—"}</strong><small>frequentaram em 2+ semanas</small></div><div><span>Frequência média</span><strong>{customers ? customers.averageFrequency : "—"}</strong><small>dias ativos por cliente</small></div><div><span>2ª visita em</span><strong>{customers?.medianDaysToSecondVisit === null || !customers ? "—" : `${customers.medianDaysToSecondVisit} dias`}</strong><small>mediana entre quem voltou</small></div></div>
-          {customers?.quality === "partial" ? <div className="data-caveat">Histórico em completamento: meses pendentes ({customers.missingMonths.join(", ")}). Os sinais dentro do recorte são reais; não classificamos clientes como novos, recuperados ou perdidos antes da série contínua.</div> : null}
+          <div className="section-title"><div><p className="kicker">Base de clientes</p><h2>Quem é cliente ativo na Kora</h2></div><p>{customers?.note ?? "A análise de clientes será exibida assim que o histórico estiver disponível."}</p></div>
+          <div className="client-kpis">
+            <div><span>Clientes ativos</span><strong>{customers ? format(customers.activeClients) : "—"}</strong><small>2+ visitas e última visita há no máximo 30 dias</small></div>
+            <div><span>Visitantes no recorte</span><strong>{customers ? format(customers.periodVisitors) : "—"}</strong><small>ao menos um acesso no período filtrado</small></div>
+            <div><span>1 visita recente</span><strong>{customers ? format(customers.recentOneVisitClients) : "—"}</strong><small>ainda não entram como clientes ativos</small></div>
+            <div><span>Inativos 30+ dias</span><strong>{customers ? format(customers.inactive30Plus) : "—"}</strong><small>já repetiram, mas passaram de 30 dias sem voltar</small></div>
+            <div><span>Frequência média</span><strong>{customers ? customers.averageFrequency : "—"}</strong><small>dias de acesso por visitante no recorte</small></div>
+            <div><span>2ª visita em</span><strong>{customers?.medianDaysToSecondVisit === null || !customers ? "—" : `${customers.medianDaysToSecondVisit} dias`}</strong><small>mediana entre quem voltou no recorte</small></div>
+          </div>
+          {customers?.quality === "partial" ? <div className="data-caveat">Histórico em completamento: meses pendentes ({customers.missingMonths.join(", ")}). A regra de ativo já está aplicada, mas a consolidação histórica pode alterar os totais de pessoas com 2+ visitas.</div> : null}
           <div className="client-journey"><div><span>Primeiras visitas observadas</span><strong>{customers ? format(customers.observedFirstVisits) : "—"}</strong><small>primeiro acesso dentro deste recorte</small></div><div><span>Ativação em 7 dias</span><strong>{customers?.activation7 === null || !customers ? "—" : `${customers.activation7}%`}</strong><small>voltaram após a primeira visita</small></div><div><span>Ativação em 30 dias</span><strong>{customers?.activation30 === null || !customers ? "—" : `${customers.activation30}%`}</strong><small>continuidade inicial da jornada</small></div><div><span>Alta frequência</span><strong>{customers ? format(customers.frequentClients) : "—"}</strong><small>4 ou mais dias no recorte</small></div><div><span>Ativos na última semana</span><strong>{customers ? format(customers.recentActiveClients) : "—"}</strong><small>presença nos últimos 7 dias disponíveis</small></div></div>
           <div className="client-bottom"><div><p className="mini-title">Distribuição de frequência</p><div className="frequency-bands">{(customers?.frequencyBands ?? []).map((band) => <div className={`frequency-band ${band.tone}`} key={band.label}><strong>{format(band.clients)}</strong><span>{band.label}</span></div>)}</div></div><div><p className="mini-title">Clientes mais frequentes no recorte</p><div className="client-ranking">{(customers?.ranking ?? []).slice(0, 5).map((client, index) => <div key={client.name}><em>{String(index + 1).padStart(2, "0")}</em><span>{client.name}</span><b>{client.visits} dias</b><small>{client.totalVisits} no histórico</small></div>)}</div></div></div>
         </article>
-
-        <article className="report-card card-full"><div className="section-title"><div><p className="kicker">Histórico</p><h2>Entradas x vendas</h2></div><p>Não compare uma entrada com uma venda: são sinais distintos.</p></div><div className="month-compare">{data.monthly.map((month) => { const max = Math.max(1, ...data.monthly.map((item) => item.entries)); return <div className="month-block" key={month.month}><div className="month-stacks"><i className="entry" style={{ height: `${(month.entries / max) * 116}px` }} /><i className="sales" style={{ height: `${Math.max(12, month.sales / max * 116)}px` }} /></div><b>{month.month}</b><small>{month.entries} acessos / {month.sales} vendas</small></div>; })}</div></article>
       </section>
 
       <footer className="report-footer"><div><KoraLogo className="footer-logo" /></div><p>Dados operacionais armazenados no Supabase. A EVO é consultada somente pela sincronização interna.</p><span>ÚLTIMA VISÃO: {data.periodLabel}</span></footer>
