@@ -11,6 +11,23 @@ function format(value: number) {
   return value.toLocaleString("pt-BR");
 }
 
+function periodObservedEnd(periodLabel: string, fallback: string) {
+  const match = periodLabel.match(/(\d{2})\/(\d{2})\/(\d{4})\s*$/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : fallback;
+}
+
+function weekdayOccurrences(start: string, end: string, weekdayIndex: number) {
+  if (!start || !end || end < start) return 0;
+  let count = 0;
+  const cursor = new Date(`${start}T00:00:00Z`);
+  const stop = new Date(`${end}T00:00:00Z`);
+  while (cursor <= stop) {
+    if ((cursor.getUTCDay() + 6) % 7 === weekdayIndex) count++;
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return count;
+}
+
 export function DashboardShell({ data, filters }: { data: DashboardPayload; filters: DashboardFilters }) {
   const studio = data.studio;
   const customers = data.customers;
@@ -20,6 +37,7 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
   const currentClass = filters.classType ?? "all";
   const start = data.filters?.start ?? filters.start ?? "";
   const end = data.filters?.end ?? filters.end ?? "";
+  const observedEnd = periodObservedEnd(data.periodLabel, end);
   const weekly = data.weeklyTrend ?? [];
   const weeklyValues = weekly.flatMap((item) => item.entries === null ? [] : [item.entries]);
   const weeklyMax = Math.max(1, ...weeklyValues);
@@ -81,10 +99,12 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
         </article>
 
         <article className="report-card card-half">
-          <div className="section-title"><div><p className="kicker">Ritmo semanal</p><h2>Onde a semana responde</h2></div><p>Total no recorte e média por ocorrência de cada dia.</p></div>
-          <div className="weekday-strip">{data.weekday.map((day) => {
+          <div className="section-title"><div><p className="kicker">Ritmo semanal</p><h2>Onde a semana responde</h2></div><p>Total no recorte e média por ocorrência de cada dia já observado.</p></div>
+          <div className="weekday-strip">{data.weekday.map((day, index) => {
             const height = Math.max(14, day.entries / Math.max(1, ...data.weekday.map((item) => item.entries)) * 112);
-            return <div className="weekday-col" key={day.day}><div className="weekday-bar" style={{ height }}><span>{day.entries}</span></div><b>{day.day}</b><small className="weekday-average">média {day.averageEntries ?? 0}</small><small>{day.aggregatorShare}% parceiros</small></div>;
+            const occurrences = weekdayOccurrences(start, observedEnd, index);
+            const average = occurrences ? Math.round((day.entries / occurrences) * 10) / 10 : 0;
+            return <div className="weekday-col" key={day.day}><div className="weekday-bar" style={{ height }}><span>{day.entries}</span></div><b>{day.day}</b><small className="weekday-average">{day.entries === 0 ? "sem operação" : `média ${average}`}</small><small>{day.aggregatorShare}% parceiros</small></div>;
           })}</div>
         </article>
 
