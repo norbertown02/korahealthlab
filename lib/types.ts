@@ -60,6 +60,78 @@ export type CustomerInsights = {
   note: string;
 };
 
+export type ClientIntelligence = {
+  source: string;
+  period_start: string;
+  period_end: string;
+  source_period_end?: string;
+  updated_at?: string;
+  identity_method: string;
+  overall: {
+    unique_visitors: number;
+    repeaters: number;
+    repeat_rate: number;
+    active_clients: number;
+    risk_clients: number;
+    lost_clients: number;
+    new_recent_one_visit: number;
+    funnel: Array<{ visits: number; clients: number }>;
+  };
+  acquisition_monthly: Array<{
+    month: string;
+    new: number;
+    wellhub: number;
+    totalpass: number;
+    direct: number;
+    repeat2: number;
+    repeat3: number;
+    repeat5: number;
+    repeat_rate: number;
+    d30_n: number;
+    d30_rate: number | null;
+  }>;
+  origin_retention: Array<{
+    origin: string;
+    new: number;
+    d7_eligible: number;
+    d7_returned: number;
+    d7_rate: number | null;
+    d14_eligible: number;
+    d14_returned: number;
+    d14_rate: number | null;
+    d30_eligible: number;
+    d30_returned: number;
+    d30_rate: number | null;
+    repeat2: number;
+    repeat2_rate: number;
+    repeat3: number;
+    repeat5: number;
+  }>;
+  teacher_retention: {
+    valid_from: string;
+    note: string;
+    rows: Array<{
+      teacher: string;
+      first_experiences: number;
+      d7_eligible: number;
+      d7_returned: number;
+      d7_rate: number | null;
+      d14_eligible: number;
+      d14_returned: number;
+      d14_rate: number | null;
+      d30_eligible: number;
+      d30_returned: number;
+      d30_rate: number | null;
+      repeat2: number;
+      repeat2_rate: number;
+      repeat3: number;
+      repeat5: number;
+      same_teacher_returners: number;
+      same_teacher_rate: number | null;
+    }>;
+  };
+};
+
 export type StudioInsights = {
   filters: { start: string; end: string; classType: "all" | "hot-sculpt" | "yoga" };
   totalSessions: number;
@@ -101,6 +173,7 @@ export type DashboardPayload = {
   filters?: { start: string; end: string };
   studio?: StudioInsights;
   customers?: CustomerInsights;
+  clientIntelligence?: ClientIntelligence | null;
 };
 
 export type EvoEntry = {
