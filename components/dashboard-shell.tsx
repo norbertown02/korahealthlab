@@ -1,4 +1,5 @@
 import { KoraLogo } from "@/components/kora-logo";
+import { ClientIntelligencePanel, TeacherRetentionPanel } from "@/components/client-intelligence-panels";
 import type { DashboardFilters, DashboardPayload } from "@/lib/types";
 
 const classOptions = [
@@ -127,24 +128,23 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
         <article className="report-card card-full">
           <div className="section-title"><div><p className="kicker">Professoras</p><h2>Quem sustenta a experiência</h2></div><p>Ranking por ocupação, com volume suficiente para leitura.</p></div>
           <div className="teacher-table"><div className="teacher-head"><span>Professora</span><span>Aulas</span><span>Ocupação</span><span>Vagas ocupadas</span></div>{(studio?.teachers ?? []).slice(0, 8).map((teacher, index) => <div className="teacher-line" key={teacher.name}><span><em>{String(index + 1).padStart(2, "0")}</em>{teacher.name}</span><span>{teacher.classes}</span><span className="teacher-progress"><i style={{ width: `${(teacher.occupancy / maxTeacher) * 100}%` }} />{teacher.occupancy}%</span><span>{teacher.occupied} / {teacher.capacity}</span></div>)}</div>
-          <div className="teacher-recurrence-note">
-            <div><p className="mini-title">Recorrência por professora</p><strong>Estudo preparado</strong><span>Queremos medir % de clientes que voltam para a mesma professora, frequência média por professora e sobreposição entre professoras.</span></div>
-            <small>Para calcular corretamente precisamos do participante identificado por aula. Hoje a base salva ocupação por sessão, mas não os nomes/IDs dos participantes; por isso não exibimos uma recorrência estimada ou inventada.</small>
-          </div>
+          <TeacherRetentionPanel data={data.clientIntelligence} />
         </article>
 
         <article className="report-card card-full section-marker"><p className="kicker">04 / Clientes</p><h2>Ativação, recorrência e retenção</h2></article>
 
+        <ClientIntelligencePanel data={data.clientIntelligence} />
+
         <article className="report-card card-full retention-card">
-          <div className="section-title"><div><p className="kicker">Retenção</p><h2>Funil de consolidação da frequência</h2></div><p>{data.retentionNote}</p></div>
+          <div className="section-title"><div><p className="kicker">Retenção no recorte</p><h2>Funil filtrável de frequência</h2></div><p>{data.retentionNote}</p></div>
           <div className="retention-funnel">{funnel.map((stage, index) => <div className="retention-stage" key={stage.visits}><div className="retention-fill" style={{ width: `${Math.max(8, (stage.clients / funnelBase) * 100)}%` }}><span>{stage.label}</span><strong>{format(stage.clients)}</strong><small>{stage.shareOfBase}% da base</small></div>{index > 0 ? <div className="retention-conversion"><b>{stage.conversionFromPrevious}%</b><span>avançam da etapa anterior</span></div> : <div className="retention-conversion base"><b>100%</b><span>base observada</span></div>}</div>)}</div>
-          <div className="data-caveat">Leitura provisória: duplicidades de identidade e meses históricos ainda em consolidação podem alterar o funil. Use para direção, não como retenção definitiva.</div>
+          <div className="data-caveat">Este funil respeita o filtro de datas acima. A “Jornada real” usa o histórico consolidado de participantes e serve para leitura de aquisição e retenção.</div>
         </article>
 
         <article className="report-card card-half"><div className="section-title"><div><p className="kicker">Comportamento</p><h2>Base e retorno</h2></div><p>Leitura que amadurece junto do histórico.</p></div><div className="behavior-stack">{data.customerGroups.map((group) => <div className="behavior-item" key={group.title}><span>{group.title}</span><strong>{typeof group.value === "number" ? format(group.value) : group.value}</strong><small>{group.note}</small></div>)}</div></article>
 
         <article className="report-card card-full client-intelligence">
-          <div className="section-title"><div><p className="kicker">Base de clientes</p><h2>Quem é cliente ativo na Kora</h2></div><p>{customers?.note ?? "A análise de clientes será exibida assim que o histórico estiver disponível."}</p></div>
+          <div className="section-title"><div><p className="kicker">Base operacional</p><h2>Quem está ativo agora</h2></div><p>{customers?.note ?? "A análise de clientes será exibida assim que o histórico estiver disponível."}</p></div>
           <div className="client-kpis">
             <div><span>Clientes ativos</span><strong>{customers ? format(customers.activeClients) : "—"}</strong><small>2+ visitas e última visita há no máximo 30 dias</small></div>
             <div><span>Visitantes no recorte</span><strong>{customers ? format(customers.periodVisitors) : "—"}</strong><small>ao menos um acesso no período filtrado</small></div>
