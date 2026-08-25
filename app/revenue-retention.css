@@ -36,5 +36,47 @@
 .retention-conversion { padding:8px 0 8px 14px; border-left:1px solid rgba(255,255,255,.2); }.retention-conversion b { display:block; color:#e7d3b2; font:600 22px/1 var(--display); }.retention-conversion span { color:rgba(248,242,232,.58); font-size:10px; }
 .retention-card .data-caveat { background:rgba(255,255,255,.08); color:#eadfce; border-left-color:#d59670; }
 
-@media (max-width:1000px){ .revenue-kpis{grid-template-columns:repeat(3,1fr)} .revenue-body{grid-template-columns:1fr} .teacher-recurrence-note{grid-template-columns:1fr} }
-@media (max-width:700px){ .revenue-kpis{grid-template-columns:repeat(2,1fr)} .revenue-weekly{overflow-x:auto;justify-content:flex-start}.revenue-week{min-width:90px}.retention-stage{grid-template-columns:1fr}.retention-conversion{border-left:0;border-top:1px solid rgba(255,255,255,.18);padding:8px 0}.product-ranking > div{grid-template-columns:28px 1fr auto}.product-ranking small{display:none} }
+.retention-deep-dive { margin-top:28px; padding-top:24px; border-top:1px solid var(--line); }
+.intelligence-heading { display:grid; grid-template-columns:1fr minmax(260px,.7fr); gap:24px; align-items:end; margin-bottom:18px; }
+.intelligence-heading h3 { margin:5px 0 0; color:var(--olive); font:600 27px/1 var(--display); letter-spacing:-.035em; }
+.intelligence-heading > p { margin:0; color:var(--muted); font-size:11px; line-height:1.55; }
+.teacher-retention-table,.channel-retention-table { border-top:1px solid var(--line); }
+.teacher-retention-head,.teacher-retention-row { display:grid; grid-template-columns:minmax(180px,1.7fr) .65fr repeat(5,.8fr); gap:10px; align-items:center; }
+.teacher-retention-head,.channel-retention-head { min-height:38px; color:var(--muted); font:9px/1 var(--mono); text-transform:uppercase; letter-spacing:.08em; }
+.teacher-retention-row { min-height:58px; border-top:1px solid rgba(84,80,63,.12); font-size:11px; }
+.teacher-retention-row > strong { color:var(--olive); font-weight:600; }
+.teacher-retention-row > span,.channel-retention-row > span { display:grid; gap:3px; }
+.teacher-retention-row b,.channel-retention-row b { color:var(--olive); font:600 17px/1 var(--display); }
+.teacher-retention-row small,.channel-retention-row small { color:var(--muted); font-size:9px; }
+.retention-focus { padding:9px; background:rgba(190,111,73,.08); border-radius:6px; }
+
+.client-journey-card { background:linear-gradient(135deg,#f7f1e7,#eef0e5); }
+.journey-kpis { display:grid; grid-template-columns:repeat(5,1fr); border:1px solid var(--line); margin-bottom:26px; }
+.journey-kpis > div { padding:16px 14px; border-right:1px solid var(--line); }
+.journey-kpis > div:last-child { border-right:0; }
+.journey-kpis span { display:block; color:var(--muted); font:9px/1.2 var(--mono); text-transform:uppercase; letter-spacing:.08em; }
+.journey-kpis strong { display:block; margin:10px 0 6px; color:var(--olive); font:600 30px/.9 var(--display); }
+.journey-kpis small { color:var(--muted); font-size:9px; line-height:1.35; }
+.journey-funnel { display:grid; gap:9px; }
+.journey-stage { display:grid; grid-template-columns:minmax(0,1fr) 210px; align-items:center; gap:16px; }
+.journey-stage-bar { min-width:120px; padding:10px 13px; display:flex; align-items:center; justify-content:space-between; background:linear-gradient(90deg,#c77650,#d99a74); color:#fff; }
+.journey-stage-bar span { font:10px/1 var(--mono); text-transform:uppercase; letter-spacing:.06em; }.journey-stage-bar strong { font:600 22px/1 var(--display); }.journey-stage > small { color:var(--muted); font-size:10px; }
+
+.acquisition-months { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+.acquisition-month { padding:14px; border:1px solid var(--line); background:rgba(255,253,248,.58); }
+.acquisition-month-title { display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+.acquisition-month-title strong { color:var(--olive); font:600 18px/1 var(--display); }.acquisition-month-title span { color:var(--muted); font-size:9px; }
+.acquisition-stack { height:11px; display:flex; margin:13px 0 9px; overflow:hidden; background:#eee8dd; }
+.acquisition-stack i { display:block; height:100%; }.acquisition-stack .wellhub { background:#8e9e77; }.acquisition-stack .totalpass { background:#c27b57; }.acquisition-stack .direct { background:#c7b79c; }
+.acquisition-month small,.acquisition-month b { display:block; }.acquisition-month small { color:var(--muted); font-size:9px; }.acquisition-month b { margin-top:8px; color:var(--olive); font-size:10px; }
+.intelligence-callout { display:flex; justify-content:space-between; gap:16px; margin-top:18px; padding:15px 17px; background:#263421; color:#f7f1e7; }
+.intelligence-callout strong { font:600 18px/1 var(--display); }.intelligence-callout span { color:rgba(247,241,231,.72); font-size:10px; }
+
+.channel-retention-head,.channel-retention-row { display:grid; grid-template-columns:minmax(140px,1.25fr) .7fr repeat(5,.85fr); gap:12px; align-items:center; }
+.channel-retention-row { min-height:64px; border-top:1px solid rgba(84,80,63,.12); font-size:11px; }
+.channel-retention-row > strong { color:var(--olive); }
+.cohort-summary { display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; }
+.cohort-summary span { padding:9px 11px; border:1px solid var(--line); color:var(--muted); font-size:10px; }.cohort-summary b { color:var(--olive); }
+
+@media (max-width:1000px){ .revenue-kpis{grid-template-columns:repeat(3,1fr)} .revenue-body{grid-template-columns:1fr} .teacher-recurrence-note{grid-template-columns:1fr} .intelligence-heading{grid-template-columns:1fr}.journey-kpis{grid-template-columns:repeat(3,1fr)}.acquisition-months{grid-template-columns:repeat(3,1fr)}.teacher-retention-table,.channel-retention-table{overflow-x:auto}.teacher-retention-head,.teacher-retention-row{min-width:900px}.channel-retention-head,.channel-retention-row{min-width:820px} }
+@media (max-width:700px){ .revenue-kpis{grid-template-columns:repeat(2,1fr)} .revenue-weekly{overflow-x:auto;justify-content:flex-start}.revenue-week{min-width:90px}.retention-stage{grid-template-columns:1fr}.retention-conversion{border-left:0;border-top:1px solid rgba(255,255,255,.18);padding:8px 0}.product-ranking > div{grid-template-columns:28px 1fr auto}.product-ranking small{display:none}.journey-kpis{grid-template-columns:repeat(2,1fr)}.journey-kpis > div{border-bottom:1px solid var(--line)}.journey-stage{grid-template-columns:1fr}.acquisition-months{grid-template-columns:1fr}.intelligence-callout{display:grid} }
