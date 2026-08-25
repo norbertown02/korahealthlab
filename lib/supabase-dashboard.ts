@@ -1,4 +1,4 @@
-import type { CustomerInsights, DashboardFilters, DashboardPayload, StudioInsights } from "@/lib/types";
+import type { ClientIntelligence, CustomerInsights, DashboardFilters, DashboardPayload, StudioInsights } from "@/lib/types";
 
 const dashboardEndpoint =
   "https://ovquzagoddwgqixtmkbr.supabase.co/functions/v1/kora-dashboard-secure";
@@ -6,6 +6,8 @@ const studioEndpoint =
   "https://ovquzagoddwgqixtmkbr.supabase.co/functions/v1/kora-studio-insights";
 const customerEndpoint =
   "https://ovquzagoddwgqixtmkbr.supabase.co/functions/v1/kora-customer-insights";
+const clientIntelligenceEndpoint =
+  "https://ovquzagoddwgqixtmkbr.supabase.co/functions/v1/kora-client-intelligence";
 
 function searchParams(filters: DashboardFilters) {
   const params = new URLSearchParams();
@@ -23,16 +25,17 @@ export async function getDashboardFromSupabase(
   if (!secret) throw new Error("Conexão segura com o Supabase não configurada.");
 
   const suffix = searchParams(filters);
-  const request = (endpoint: string) =>
-    fetch(`${endpoint}${suffix}`, {
+  const request = (endpoint: string, withFilters = true) =>
+    fetch(`${endpoint}${withFilters ? suffix : ""}`, {
       headers: { "x-kora-dashboard-secret": secret },
       cache: "no-store"
     });
 
-  const [dashboardResponse, studioResponse, customerResponse] = await Promise.all([
+  const [dashboardResponse, studioResponse, customerResponse, intelligenceResponse] = await Promise.all([
     request(dashboardEndpoint),
     request(studioEndpoint),
-    request(customerEndpoint)
+    request(customerEndpoint),
+    request(clientIntelligenceEndpoint, false)
   ]);
 
   if (!dashboardResponse.ok || !studioResponse.ok || !customerResponse.ok) {
@@ -42,11 +45,15 @@ export async function getDashboardFromSupabase(
   const dashboard = (await dashboardResponse.json()) as DashboardPayload;
   const studio = (await studioResponse.json()) as StudioInsights;
   const customers = (await customerResponse.json()) as CustomerInsights;
+  const clientIntelligence = intelligenceResponse.ok
+    ? ((await intelligenceResponse.json()) as ClientIntelligence | null)
+    : null;
 
   return {
     ...dashboard,
     studio,
     customers,
+    clientIntelligence,
     teachers: studio.teachers.map((teacher) => ({
       name: teacher.name,
       classes: teacher.classes,
