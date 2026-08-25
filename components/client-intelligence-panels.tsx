@@ -48,7 +48,7 @@ export function ClientIntelligencePanel({ data }: { data?: ClientIntelligence | 
   return (
     <>
       <article className="report-card card-full client-journey-card">
-        <div className="section-title"><div><p className="kicker">Saúde da base</p><h2>Quem entra, quem volta e quem estamos perdendo</h2></div><p>Histórico consolidado até {data.period_end.split("-").reverse().join("/")}.</p></div>
+        <div className="section-title journey-title"><div><p className="kicker">Saúde da base</p><h2>Quem entra, quem volta e quem estamos perdendo</h2></div><p>Histórico consolidado até {data.period_end.split("-").reverse().join("/")}.</p></div>
         <div className="journey-kpis compact">
           <div><span>Alunos que vieram</span><strong>{format(data.overall.unique_visitors)}</strong><small>pessoas identificadas com 1+ visita</small></div>
           <div><span>Recorrência</span><strong>{pct(data.overall.repeat_rate)}</strong><small>{format(data.overall.repeaters)} chegaram à 2ª visita</small></div>
@@ -56,13 +56,35 @@ export function ClientIntelligencePanel({ data }: { data?: ClientIntelligence | 
           <div><span>Em risco</span><strong>{format(data.overall.risk_clients)}</strong><small>15–30 dias sem voltar</small></div>
           <div><span>Perdidos</span><strong>{format(data.overall.lost_clients)}</strong><small>mais de 30 dias sem voltar</small></div>
         </div>
-        <div className="journey-funnel">
-          {data.overall.funnel.map((stage, index) => {
-            const width = Math.max(8, stage.clients / base * 100);
-            const previous = index === 0 ? stage.clients : data.overall.funnel[index - 1].clients;
-            const conversion = previous ? stage.clients / previous * 100 : 0;
-            return <div className="journey-stage" key={stage.visits}><div className="journey-stage-bar" style={{ width: `${width}%` }}><span>{stage.visits === 1 ? "1ª visita" : `${stage.visits}+ visitas`}</span><strong>{format(stage.clients)}</strong></div><small>{index === 0 ? "base de quem efetivamente veio" : `${conversion.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% avançam da etapa anterior`}</small></div>;
-          })}
+
+        <div className="journey-funnel-shell">
+          <div className="journey-funnel-heading">
+            <div><p className="mini-title">Jornada real</p><h3>Da primeira aula ao hábito</h3></div>
+            <p>O tamanho da barra mostra quanto da base chegou à etapa. À direita, mostramos a conversão em relação à etapa anterior.</p>
+          </div>
+          <div className="journey-funnel executive">
+            {data.overall.funnel.map((stage, index) => {
+              const width = Math.max(9, stage.clients / base * 100);
+              const shareOfBase = stage.clients / base * 100;
+              const previous = index === 0 ? stage.clients : data.overall.funnel[index - 1].clients;
+              const conversion = previous ? stage.clients / previous * 100 : 0;
+              const label = stage.visits === 1 ? "1ª visita" : `${stage.visits}+ visitas`;
+              return (
+                <div className="journey-stage executive-stage" key={stage.visits}>
+                  <div className="journey-track">
+                    <div className="journey-stage-bar" style={{ width: `${width}%` }}>
+                      <div><span>{label}</span><small>{shareOfBase.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% da base</small></div>
+                      <strong>{format(stage.clients)}</strong>
+                    </div>
+                  </div>
+                  <div className={`journey-conversion ${index === 0 ? "base" : ""}`}>
+                    <b>{index === 0 ? "100%" : `${conversion.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}</b>
+                    <span>{index === 0 ? "base de alunos que efetivamente vieram" : `avançam de ${data.overall.funnel[index - 1].visits === 1 ? "1ª visita" : `${data.overall.funnel[index - 1].visits}+ visitas`} para ${label}`}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </article>
 
