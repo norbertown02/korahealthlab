@@ -1,0 +1,57 @@
+/* Management simplification: keep one decision per block. */
+
+/* Legacy client blocks remain in code for compatibility but leave the management view. */
+.acquisition-quality-card + .retention-card,
+.acquisition-quality-card + .retention-card + .card-half,
+.acquisition-quality-card + .retention-card + .card-half + .client-intelligence {
+  display:none;
+}
+
+.journey-kpis.compact {
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  margin-bottom:22px;
+}
+.journey-kpis.compact > div { min-height:112px; }
+
+.acquisition-quality-grid {
+  display:grid;
+  grid-template-columns:minmax(0,1.2fr) minmax(420px,.8fr);
+  gap:30px;
+  align-items:start;
+}
+.acquisition-quality-grid > div { min-width:0; }
+.acquisition-months.compact { grid-template-columns:repeat(5,minmax(0,1fr)); }
+
+.teacher-retention-table.compact .teacher-retention-head,
+.teacher-retention-table.compact .teacher-retention-row {
+  grid-template-columns:minmax(190px,1.8fr) .65fr .9fr .9fr 1.05fr;
+}
+.channel-retention-table.compact .channel-retention-head,
+.channel-retention-table.compact .channel-retention-row {
+  grid-template-columns:minmax(130px,1.25fr) .65fr .9fr .9fr .75fr;
+}
+
+.teacher-retention-table.compact .teacher-retention-row,
+.channel-retention-table.compact .channel-retention-row { min-height:58px; }
+
+.acquisition-quality-card .data-caveat { margin-top:16px; }
+
+@media (max-width:1150px) {
+  .acquisition-quality-grid { grid-template-columns:1fr; }
+  .acquisition-months.compact { grid-template-columns:repeat(5,minmax(120px,1fr)); overflow-x:auto; }
+}
+
+@media (max-width:1000px) {
+  .journey-kpis.compact { grid-template-columns:repeat(3,1fr); }
+  .teacher-retention-table.compact,
+  .channel-retention-table.compact { overflow-x:auto; }
+  .teacher-retention-table.compact .teacher-retention-head,
+  .teacher-retention-table.compact .teacher-retention-row { min-width:760px; }
+  .channel-retention-table.compact .channel-retention-head,
+  .channel-retention-table.compact .channel-retention-row { min-width:680px; }
+}
+
+@media (max-width:700px) {
+  .journey-kpis.compact { grid-template-columns:repeat(2,1fr); }
+  .acquisition-months.compact { grid-template-columns:1fr; overflow:visible; }
+}
