@@ -1,5 +1,6 @@
 import { KoraLogo } from "@/components/kora-logo";
 import { ClientIntelligencePanel, TeacherRetentionPanel } from "@/components/client-intelligence-panels";
+import { CommercialHistoryChart } from "@/components/commercial-history-chart";
 import type { DashboardFilters, DashboardPayload } from "@/lib/types";
 
 const classOptions = [
@@ -121,7 +122,7 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
           </div>
         </article>
 
-        <article className="report-card card-full"><div className="section-title"><div><p className="kicker">Histórico comercial</p><h2>Entradas x vendas</h2></div><p>Não compare uma entrada com uma venda: são sinais distintos.</p></div><div className="month-compare">{data.monthly.map((month) => { const max = Math.max(1, ...data.monthly.map((item) => item.entries)); return <div className="month-block" key={month.month}><div className="month-stacks"><i className="entry" style={{ height: `${(month.entries / max) * 116}px` }} /><i className="sales" style={{ height: `${Math.max(12, month.sales / max * 116)}px` }} /></div><b>{month.month}</b><small>{month.entries} acessos / {month.sales} vendas</small></div>; })}</div></article>
+        <CommercialHistoryChart data={data.monthly} />
 
         <article className="report-card card-full section-marker"><p className="kicker">03 / Professoras</p><h2>Ocupação e fidelidade à experiência</h2></article>
 
