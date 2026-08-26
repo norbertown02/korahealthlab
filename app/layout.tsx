@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./dashboard-enhancements.css";
 import "./revenue-retention.css";
+import "./commercial-chart-refinement.css";
 import "./management-simplification.css";
 
 export const metadata: Metadata = {
