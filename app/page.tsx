@@ -139,6 +139,18 @@ function previousPeriodRange(view: "month" | "quarter" | "year", start: string) 
   };
 }
 
+async function loadDashboardWithRecovery(filters: DashboardFilters) {
+  try {
+    return await getDashboardFromSupabase(filters);
+  } catch (error) {
+    // A cold Edge Function can occasionally fail the very first document load.
+    // Recover once inside the server render instead of making the user refresh.
+    console.warn("[Kora dashboard] primeira carga falhou; repetindo internamente", error);
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    return getDashboardFromSupabase(filters);
+  }
+}
+
 export default async function HomePage({ searchParams }: PageProps) {
   if (!(await hasValidSession())) return <LoginScreen />;
 
@@ -168,11 +180,15 @@ export default async function HomePage({ searchParams }: PageProps) {
   let payload: DashboardPayload | null = null;
   let previousPayload: DashboardPayload | null = null;
   try {
-    [payload, previousPayload] = await Promise.all([
-      getDashboardFromSupabase(filters),
-      getDashboardPeriodFromSupabase(previousFilters).catch(() => null)
-    ]);
-  } catch {
+    // Load the current report first. The previous-period comparison is useful,
+    // but it should not compete with the main report during a cold first access.
+    payload = await loadDashboardWithRecovery(filters);
+    previousPayload = await getDashboardPeriodFromSupabase(previousFilters).catch((error) => {
+      console.warn("[Kora dashboard] comparativo anterior indisponível nesta carga", error);
+      return null;
+    });
+  } catch (error) {
+    console.error("[Kora dashboard] falha definitiva ao carregar o recorte", error);
     return (
       <main className="page-shell">
         <section className="loading-shell">
