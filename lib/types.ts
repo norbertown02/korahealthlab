@@ -147,7 +147,15 @@ export type StudioInsights = {
   opportunities: Array<{ tone: string; title: string; detail: string }>;
 };
 
-export type DashboardFilters = { start?: string; end?: string; classType?: "all" | "hot-sculpt" | "yoga" };
+export type DashboardFilters = {
+  start?: string;
+  end?: string;
+  classType?: "all" | "hot-sculpt" | "yoga";
+  view?: "month" | "quarter" | "year";
+  month?: string;
+  quarter?: string;
+  year?: string;
+};
 
 export type DashboardPayload = {
   description: string;
