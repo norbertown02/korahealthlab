@@ -76,11 +76,25 @@ html, body { max-width:100%; overflow-x:hidden; }
 .kora-loading-track i { display:block; width:0; height:100%; background:linear-gradient(90deg,#99a57d,#d8dfbd); border-radius:999px; animation:koraDataLoad 2.8s cubic-bezier(.2,.7,.2,1) forwards; }
 .kora-loading-card small { display:block; margin-top:12px; color:rgba(246,240,229,.36); font:8px/1 var(--mono); letter-spacing:.1em; text-transform:uppercase; }
 
-/* Mobile containment */
+/* Chart alignment and containment */
 .kora-report, .report-grid, .report-card, .commercial-history-card { min-width:0; max-width:100%; }
 .commercial-history-card { overflow:hidden; }
+
+/* Keep every weekday bar anchored to the same baseline even when labels wrap. */
+.weekday-strip { align-items:stretch; }
+.weekday-col {
+  display:grid;
+  grid-template-rows:112px 18px 14px 14px;
+  align-items:end;
+  align-content:end;
+}
+.weekday-bar { align-self:end; }
+.weekday-col b, .weekday-col small { align-self:center; }
+.weekday-average { white-space:nowrap; }
+
+/* Desktop commercial history still fills the card. */
 .commercial-chart-wrap { width:100%; max-width:100%; overflow:hidden; }
-.commercial-chart { width:100%; max-width:100%; min-width:0!important; height:auto; overflow:hidden; }
+.commercial-chart { width:100%; max-width:100%; min-width:0; height:auto; overflow:visible; }
 
 @keyframes koraLoginSweep { 0%{transform:translateX(-120%)} 100%{transform:translateX(340%)} }
 @keyframes koraDataLoad { 0%{width:0} 48%{width:68%} 82%{width:88%} 100%{width:94%} }
@@ -109,6 +123,33 @@ html, body { max-width:100%; overflow-x:hidden; }
   .kora-report { width:100%; padding-left:12px; padding-right:12px; }
   .report-grid { width:100%; max-width:100%; overflow:hidden; }
   .report-card { width:100%; max-width:100%; }
+
+  /* Weekly rhythm: fixed plot area keeps Wed/Sat aligned with every other day. */
+  .weekday-strip { min-height:150px; gap:4px; }
+  .weekday-col { grid-template-rows:112px 18px; gap:6px; }
+  .weekday-col small { display:none; }
+  .weekday-bar { width:100%; }
+
+  /* Weekly sales: this chart is intentionally draggable inside its own card. */
+  .revenue-weekly-wrap { width:100%; min-width:0; overflow:hidden; }
+  .revenue-weekly {
+    width:100%;
+    max-width:100%;
+    overflow-x:auto!important;
+    overflow-y:hidden;
+    justify-content:flex-start!important;
+    gap:10px;
+    padding:0 4px 12px;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-inline:contain;
+    touch-action:pan-x;
+    scroll-snap-type:x proximity;
+    scrollbar-width:none;
+  }
+  .revenue-weekly::-webkit-scrollbar { display:none; }
+  .revenue-week { flex:0 0 92px!important; min-width:92px!important; scroll-snap-align:start; }
+
+  /* Entradas x vendas: restore the closer, draggable mobile view. */
   .commercial-history-card { width:100%; padding:20px 14px 17px!important; }
   .commercial-history-head, .commercial-history-summary, .commercial-history-latest, .commercial-chart-footer { width:100%; max-width:100%; min-width:0; }
   .commercial-history-summary { grid-template-columns:1fr 1fr; gap:7px; }
@@ -117,12 +158,58 @@ html, body { max-width:100%; overflow-x:hidden; }
   .commercial-history-latest { display:grid!important; grid-template-columns:1fr; border-radius:12px!important; gap:7px!important; }
   .commercial-history-latest > span { width:auto!important; }
   .commercial-history-latest > div { white-space:normal!important; flex-wrap:wrap; }
-  .commercial-chart-wrap { min-height:0!important; margin:8px 0 0!important; overflow:hidden!important; }
-  .commercial-chart { display:block; width:100%!important; max-width:100%!important; min-width:0!important; height:auto!important; }
-  .commercial-value-label { display:none; }
+  .commercial-chart-wrap {
+    width:calc(100% + 14px);
+    max-width:none;
+    min-height:0!important;
+    margin:8px -7px 0!important;
+    padding:0 7px 4px;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-inline:contain;
+    touch-action:pan-x;
+    scrollbar-width:none;
+  }
+  .commercial-chart-wrap::-webkit-scrollbar { display:none; }
+  .commercial-chart {
+    display:block;
+    width:760px!important;
+    max-width:none!important;
+    min-width:760px!important;
+    height:auto!important;
+    overflow:visible!important;
+  }
+  .commercial-value-label { display:block!important; font-size:8.5px; }
   .commercial-axis-label { font-size:8px; }
-  .commercial-month-label { font-size:8px; }
+  .commercial-month-label { font-size:9px; }
   .commercial-chart-footer { gap:10px; }
   .commercial-chart-footer p { display:none; }
   .commercial-chart-footer > span { font-size:9px; }
+
+  /* Quem sustenta a experiência: no horizontal drag, all useful fields fit in-card. */
+  .teacher-table { width:100%; max-width:100%; overflow:visible!important; }
+  .teacher-head { display:none!important; }
+  .teacher-line {
+    width:100%;
+    max-width:100%;
+    min-width:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    grid-template-areas:"teacher classes" "occupancy capacity";
+    gap:8px 10px!important;
+    padding:12px 0!important;
+    align-items:center;
+  }
+  .teacher-line > span:first-child {
+    grid-area:teacher;
+    min-width:0;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+  .teacher-line > span:nth-child(2) { grid-area:classes; text-align:right; white-space:nowrap; }
+  .teacher-line > span:nth-child(2)::before { content:"Aulas "; color:var(--muted); font:8px/1 var(--mono); text-transform:uppercase; }
+  .teacher-line > span:nth-child(3) { grid-area:occupancy; min-width:0; }
+  .teacher-line > span:nth-child(4) { grid-area:capacity; display:block!important; text-align:right; white-space:nowrap; color:var(--muted); font-size:10px; }
+  .teacher-line > span:nth-child(4)::before { content:"Vagas "; color:var(--muted); font:8px/1 var(--mono); text-transform:uppercase; }
 }
