@@ -2,6 +2,7 @@ import { KoraLogo } from "@/components/kora-logo";
 import { ClientIntelligencePanel, TeacherRetentionPanel } from "@/components/client-intelligence-panels";
 import { CommercialHistoryChart } from "@/components/commercial-history-chart";
 import { PeriodFilter } from "@/components/period-filter";
+import { WeekdayResponseChart } from "@/components/weekday-response-chart";
 import type { DashboardFilters, DashboardPayload } from "@/lib/types";
 
 function format(value: number) { return value.toLocaleString("pt-BR"); }
@@ -10,19 +11,16 @@ function periodObservedEnd(periodLabel: string, fallback: string) {
   const match = periodLabel.match(/(\d{2})\/(\d{2})\/(\d{4})\s*$/);
   return match ? `${match[3]}-${match[2]}-${match[1]}` : fallback;
 }
-function weekdayOccurrences(start: string, end: string, weekdayIndex: number) {
-  if (!start || !end || end < start) return 0;
-  let count = 0;
-  const cursor = new Date(`${start}T00:00:00Z`);
-  const stop = new Date(`${end}T00:00:00Z`);
-  while (cursor <= stop) {
-    if ((cursor.getUTCDay() + 6) % 7 === weekdayIndex) count++;
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
-  }
-  return count;
-}
 
-export function DashboardShell({ data, filters }: { data: DashboardPayload; filters: DashboardFilters }) {
+export function DashboardShell({
+  data,
+  filters,
+  previousPeriod
+}: {
+  data: DashboardPayload;
+  filters: DashboardFilters;
+  previousPeriod?: { weekday: DashboardPayload["weekday"]; start: string; end: string } | null;
+}) {
   const studio = data.studio;
   const customers = data.customers;
   const revenue = data.revenue;
@@ -81,10 +79,12 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
           <small className="footnote">Agregadores classificam o acesso existente; não são somados ao total novamente.</small>
         </article>
 
-        <article className="report-card card-half">
-          <div className="section-title"><div><p className="kicker">Ritmo semanal</p><h2>Onde a semana responde</h2></div><p>Total no recorte e média por ocorrência de cada dia já observado.</p></div>
-          <div className="weekday-strip">{data.weekday.map((day, index) => { const height = Math.max(14, day.entries / Math.max(1, ...data.weekday.map((item) => item.entries)) * 112); const occurrences = weekdayOccurrences(start, observedEnd, index); const average = occurrences ? Math.round((day.entries / occurrences) * 10) / 10 : 0; return <div className="weekday-col" key={day.day}><div className="weekday-bar" style={{ height }}><span>{day.entries}</span></div><b>{day.day}</b><small className="weekday-average">{day.entries === 0 ? "sem operação" : `média ${average}`}</small><small>{day.aggregatorShare}% parceiros</small></div>; })}</div>
-        </article>
+        <WeekdayResponseChart
+          current={data.weekday}
+          currentStart={start}
+          currentEnd={observedEnd}
+          previous={previousPeriod}
+        />
 
         <article className="report-card card-full weekly-trend-card">
           <div className="section-title"><div><p className="kicker">Evolução de acessos</p><h2>Acessos totais por semana</h2></div><p>Janela de até 6 meses. Semanas de meses ainda não carregados aparecem como lacunas.</p></div>
