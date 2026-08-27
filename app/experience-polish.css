@@ -1,0 +1,128 @@
+html, body { max-width:100%; overflow-x:hidden; }
+
+/* Login */
+.kora-auth-shell {
+  min-height:100svh;
+  display:grid;
+  grid-template-columns:minmax(0,.9fr) minmax(420px,1.1fr);
+  background:#f2ede4;
+  color:var(--ink);
+}
+.kora-auth-panel {
+  min-height:100svh;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:clamp(36px,6vw,88px);
+  position:relative;
+  z-index:2;
+}
+.kora-auth-brand { position:absolute; top:34px; left:clamp(36px,6vw,88px); display:flex; align-items:center; gap:14px; }
+.kora-auth-logo-wrap { width:94px; height:56px; display:flex; align-items:center; overflow:hidden; }
+.kora-auth-logo { width:94px; height:auto; display:block; }
+.kora-auth-brand p { margin:0; color:#66705f; font:10px/1 var(--mono); text-transform:uppercase; letter-spacing:.12em; }
+.kora-auth-copy { max-width:560px; }
+.kora-auth-copy > span { display:block; margin-bottom:15px; color:#899078; font:10px/1 var(--mono); letter-spacing:.14em; text-transform:uppercase; }
+.kora-auth-copy h1 { margin:0; color:#2d3928; font:600 clamp(46px,5vw,76px)/.92 var(--display); letter-spacing:-.058em; }
+.kora-auth-copy h1 i { color:#8c9672; font-weight:500; }
+.kora-auth-copy p { max-width:470px; margin:24px 0 34px; color:#66705f; font-size:14px; line-height:1.7; }
+.kora-login-form { width:min(100%,470px); display:grid; gap:12px; }
+.kora-login-form label { display:grid; gap:9px; }
+.kora-login-form label span { color:#66705f; font:9px/1 var(--mono); letter-spacing:.11em; text-transform:uppercase; }
+.kora-login-form input {
+  width:100%; height:54px; padding:0 16px;
+  border:1px solid rgba(60,69,54,.18); border-radius:12px;
+  color:#26311f; background:rgba(255,255,255,.62); outline:none;
+  transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.kora-login-form input:focus { border-color:#71805f; background:#fffdf9; box-shadow:0 0 0 4px rgba(113,128,95,.09); }
+.kora-login-form button {
+  height:54px; display:flex; align-items:center; justify-content:space-between; gap:18px;
+  padding:0 18px; border:0; border-radius:12px; background:#3c4536; color:#f6f0e5;
+  font:500 11px/1 var(--mono); letter-spacing:.07em; text-transform:uppercase;
+  transition:transform .18s ease, background .18s ease, opacity .18s ease;
+}
+.kora-login-form button:hover { transform:translateY(-1px); background:#4a5542; }
+.kora-login-form button:disabled { opacity:.72; cursor:wait; }
+.kora-login-form button i { font:400 20px/1 var(--body); font-style:normal; }
+.kora-login-error { margin:0; color:#a4563b; font-size:11px; }
+.kora-login-progress { height:2px; overflow:hidden; background:rgba(60,69,54,.1); border-radius:999px; }
+.kora-login-progress i { display:block; width:42%; height:100%; background:#83906d; animation:koraLoginSweep .9s ease-in-out infinite; }
+.kora-auth-foot { margin-top:24px; color:#8a9182; font:9px/1 var(--mono); letter-spacing:.08em; text-transform:uppercase; }
+.kora-auth-art {
+  position:relative; overflow:hidden; min-height:100svh; display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(circle at 72% 24%,rgba(173,184,144,.17),transparent 28%),linear-gradient(145deg,#242e21,#3c4536 58%,#505c47);
+}
+.kora-auth-art::after { content:""; position:absolute; inset:0; background:linear-gradient(110deg,rgba(255,255,255,.025),transparent 42%); }
+.kora-auth-art > span { position:relative; z-index:2; color:#cbd2ac; text-align:center; font:500 12px/1.55 var(--mono); letter-spacing:.13em; }
+.kora-auth-orbit { position:absolute; border:1px solid rgba(232,223,208,.25); border-radius:50%; }
+.orbit-one { width:54%; aspect-ratio:1; transform:rotate(-18deg) scaleY(.68); }
+.orbit-two { width:42%; aspect-ratio:1; transform:rotate(42deg) scaleX(.7); border-color:rgba(202,211,171,.4); }
+.orbit-three { width:76%; aspect-ratio:1; transform:rotate(12deg) scaleY(.5); opacity:.55; }
+
+/* Loading */
+.kora-loading-shell {
+  min-height:100svh; display:grid; place-items:center; padding:28px;
+  background:radial-gradient(circle at 70% 20%,rgba(174,190,143,.16),transparent 27%),linear-gradient(145deg,#20291d,#3c4536 64%,#4c5844);
+}
+.kora-loading-card { width:min(560px,100%); text-align:center; color:#f6f0e5; }
+.kora-loading-logo-wrap { width:150px; height:90px; display:flex; align-items:center; justify-content:center; margin:0 auto 28px; }
+.kora-loading-logo { width:150px; height:auto; display:block; }
+.kora-loading-card > span { display:block; color:#bfc8a2; font:9px/1 var(--mono); letter-spacing:.15em; text-transform:uppercase; }
+.kora-loading-card h1 { margin:16px 0 13px; font:600 clamp(38px,6vw,62px)/.94 var(--display); letter-spacing:-.05em; }
+.kora-loading-card h1 i { color:#d7ddbb; font-weight:500; }
+.kora-loading-card p { margin:0 auto 30px; max-width:430px; color:rgba(246,240,229,.58); font-size:12px; line-height:1.65; }
+.kora-loading-track { width:min(420px,100%); height:3px; margin:0 auto; overflow:hidden; background:rgba(255,255,255,.11); border-radius:999px; }
+.kora-loading-track i { display:block; width:0; height:100%; background:linear-gradient(90deg,#99a57d,#d8dfbd); border-radius:999px; animation:koraDataLoad 2.8s cubic-bezier(.2,.7,.2,1) forwards; }
+.kora-loading-card small { display:block; margin-top:12px; color:rgba(246,240,229,.36); font:8px/1 var(--mono); letter-spacing:.1em; text-transform:uppercase; }
+
+/* Mobile containment */
+.kora-report, .report-grid, .report-card, .commercial-history-card { min-width:0; max-width:100%; }
+.commercial-history-card { overflow:hidden; }
+.commercial-chart-wrap { width:100%; max-width:100%; overflow:hidden; }
+.commercial-chart { width:100%; max-width:100%; min-width:0!important; height:auto; overflow:hidden; }
+
+@keyframes koraLoginSweep { 0%{transform:translateX(-120%)} 100%{transform:translateX(340%)} }
+@keyframes koraDataLoad { 0%{width:0} 48%{width:68%} 82%{width:88%} 100%{width:94%} }
+
+@media (max-width:900px) {
+  .kora-auth-shell { grid-template-columns:1fr; background:#3c4536; }
+  .kora-auth-art { display:none; }
+  .kora-auth-panel { min-height:100svh; padding:88px 22px 34px; justify-content:center; color:#f6f0e5; background:radial-gradient(circle at 92% 8%,rgba(187,198,160,.14),transparent 28%),linear-gradient(160deg,#303a2c,#3c4536 62%,#46513f); }
+  .kora-auth-brand { top:24px; left:22px; }
+  .kora-auth-brand p { color:rgba(246,240,229,.52); }
+  .kora-auth-copy > span { color:#bbc5a0; }
+  .kora-auth-copy h1 { color:#fffaf0; font-size:clamp(43px,13vw,62px); }
+  .kora-auth-copy h1 i { color:#d6ddba; }
+  .kora-auth-copy p { color:rgba(246,240,229,.62); margin-bottom:28px; }
+  .kora-login-form { width:100%; }
+  .kora-login-form label span { color:rgba(246,240,229,.58); }
+  .kora-login-form input { height:56px; color:#f8f4eb; background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.16); }
+  .kora-login-form input::placeholder { color:rgba(246,240,229,.38); }
+  .kora-login-form input:focus { background:rgba(255,255,255,.1); border-color:#b8c49d; box-shadow:0 0 0 4px rgba(184,196,157,.08); }
+  .kora-login-form button { height:56px; background:#d3d9b6; color:#303a2c; }
+  .kora-login-form button:hover { background:#e1e6ca; }
+  .kora-auth-foot { color:rgba(246,240,229,.35); }
+}
+
+@media (max-width:700px) {
+  .kora-report { width:100%; padding-left:12px; padding-right:12px; }
+  .report-grid { width:100%; max-width:100%; overflow:hidden; }
+  .report-card { width:100%; max-width:100%; }
+  .commercial-history-card { width:100%; padding:20px 14px 17px!important; }
+  .commercial-history-head, .commercial-history-summary, .commercial-history-latest, .commercial-chart-footer { width:100%; max-width:100%; min-width:0; }
+  .commercial-history-summary { grid-template-columns:1fr 1fr; gap:7px; }
+  .commercial-history-summary > div { min-width:0!important; padding:10px!important; }
+  .commercial-history-summary strong { font-size:21px; }
+  .commercial-history-latest { display:grid!important; grid-template-columns:1fr; border-radius:12px!important; gap:7px!important; }
+  .commercial-history-latest > span { width:auto!important; }
+  .commercial-history-latest > div { white-space:normal!important; flex-wrap:wrap; }
+  .commercial-chart-wrap { min-height:0!important; margin:8px 0 0!important; overflow:hidden!important; }
+  .commercial-chart { display:block; width:100%!important; max-width:100%!important; min-width:0!important; height:auto!important; }
+  .commercial-value-label { display:none; }
+  .commercial-axis-label { font-size:8px; }
+  .commercial-month-label { font-size:8px; }
+  .commercial-chart-footer { gap:10px; }
+  .commercial-chart-footer p { display:none; }
+  .commercial-chart-footer > span { font-size:9px; }
+}
