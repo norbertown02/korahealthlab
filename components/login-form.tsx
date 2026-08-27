@@ -1,10 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 
 export function LoginForm({ nextPath = "/" }: { nextPath?: string }) {
-  const router = useRouter();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,9 +22,19 @@ export function LoginForm({ nextPath = "/" }: { nextPath?: string }) {
         setError(result.error ?? "Não foi possível entrar.");
         return;
       }
+
       const safeNext = nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/";
-      router.replace(safeNext);
-      router.refresh();
+
+      // When the login was rendered through middleware rewrite, the visible URL
+      // is already the dashboard URL. Reloading the same standalone window lets
+      // middleware see the new session cookie without opening a new navigation
+      // context on iOS. Direct visits to /login still return to the requested
+      // internal path using same-origin location replacement.
+      if (window.location.pathname === "/login") {
+        window.location.replace(safeNext);
+      } else {
+        window.location.reload();
+      }
     } catch {
       setError("Falha de conexão. Tente novamente.");
     } finally {
