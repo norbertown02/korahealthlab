@@ -18,6 +18,32 @@ function searchParams(filters: DashboardFilters) {
   return value ? `?${value}` : "";
 }
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchWithRetry(url: string, secret: string) {
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await fetch(url, {
+        headers: { "x-kora-dashboard-secret": secret },
+        cache: "no-store"
+      });
+
+      if (response.ok || response.status < 500) return response;
+      lastError = new Error(`Supabase respondeu ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < 2) await wait(350 * (attempt + 1));
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Falha transitória ao carregar dados do Supabase.");
+}
+
 export async function getDashboardFromSupabase(
   filters: DashboardFilters = {}
 ): Promise<DashboardPayload> {
@@ -26,10 +52,7 @@ export async function getDashboardFromSupabase(
 
   const suffix = searchParams(filters);
   const request = (endpoint: string, withFilters = true) =>
-    fetch(`${endpoint}${withFilters ? suffix : ""}`, {
-      headers: { "x-kora-dashboard-secret": secret },
-      cache: "no-store"
-    });
+    fetchWithRetry(`${endpoint}${withFilters ? suffix : ""}`, secret);
 
   const [dashboardResponse, studioResponse, customerResponse, intelligenceResponse] = await Promise.all([
     request(dashboardEndpoint),
