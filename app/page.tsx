@@ -1,12 +1,74 @@
+import { cookies } from "next/headers";
 import { DashboardShell } from "@/components/dashboard-shell";
+import { KoraLogo } from "@/components/kora-logo";
+import { LoginForm } from "@/components/login-form";
 import { getDashboardFromSupabase, getDashboardPeriodFromSupabase } from "@/lib/supabase-dashboard";
 import type { DashboardFilters, DashboardPayload } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
+const SESSION_COOKIE = "kora_session";
+const SESSION_MESSAGE = "kora-dashboard-session-v1";
+
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+function toBase64Url(bytes: Uint8Array) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function sessionToken(password: string) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(SESSION_MESSAGE)
+  );
+  return toBase64Url(new Uint8Array(signature));
+}
+
+async function hasValidSession() {
+  const password = process.env.APP_PASSWORD;
+  if (!password) return false;
+  const store = await cookies();
+  const current = store.get(SESSION_COOKIE)?.value;
+  return current === await sessionToken(password);
+}
+
+function LoginScreen() {
+  return (
+    <main className="kora-auth-shell">
+      <section className="kora-auth-panel">
+        <div className="kora-auth-brand">
+          <div className="kora-auth-logo-wrap"><KoraLogo className="kora-auth-logo" /></div>
+          <p>Kora Health Lab</p>
+        </div>
+        <div className="kora-auth-copy">
+          <span>Private Studio Intelligence</span>
+          <h1>Sua operação,<br /><i>em uma visão.</i></h1>
+          <p>Acesse o painel de gestão do Kora para acompanhar movimento, receita, professoras e recorrência.</p>
+        </div>
+        <LoginForm />
+        <small className="kora-auth-foot">Acesso privado · Kora Health Lab</small>
+      </section>
+      <aside className="kora-auth-art" aria-hidden="true">
+        <div className="kora-auth-orbit orbit-one" />
+        <div className="kora-auth-orbit orbit-two" />
+        <div className="kora-auth-orbit orbit-three" />
+        <span>MOVIMENTO<br />COM INTENÇÃO</span>
+      </aside>
+    </main>
+  );
+}
 
 function value(params: Record<string, string | string[] | undefined>, key: string) {
   const item = params[key];
@@ -78,6 +140,8 @@ function previousPeriodRange(view: "month" | "quarter" | "year", start: string) 
 }
 
 export default async function HomePage({ searchParams }: PageProps) {
+  if (!(await hasValidSession())) return <LoginScreen />;
+
   const params = await searchParams;
   const classType = value(params, "classType");
   const rawView = value(params, "view");
