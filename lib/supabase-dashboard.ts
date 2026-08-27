@@ -44,6 +44,17 @@ async function fetchWithRetry(url: string, secret: string) {
     : new Error("Falha transitória ao carregar dados do Supabase.");
 }
 
+export async function getDashboardPeriodFromSupabase(
+  filters: DashboardFilters = {}
+): Promise<DashboardPayload> {
+  const secret = process.env.KORA_DASHBOARD_READ_SECRET;
+  if (!secret) throw new Error("Conexão segura com o Supabase não configurada.");
+
+  const response = await fetchWithRetry(`${dashboardEndpoint}${searchParams(filters)}`, secret);
+  if (!response.ok) throw new Error("Não foi possível carregar o período comparativo.");
+  return (await response.json()) as DashboardPayload;
+}
+
 export async function getDashboardFromSupabase(
   filters: DashboardFilters = {}
 ): Promise<DashboardPayload> {
