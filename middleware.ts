@@ -88,11 +88,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Keep the browser/PWA on the exact URL it was opened with. Rendering the
+  // login page through a rewrite avoids a client navigation from /login to /
+  // that can cause iOS Home Screen web apps to fall back into Safari chrome.
   const loginUrl = request.nextUrl.clone();
+  const originalPath = pathname + request.nextUrl.search;
   loginUrl.pathname = "/login";
   loginUrl.search = "";
-  if (pathname !== "/") loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
-  return NextResponse.redirect(loginUrl);
+  if (originalPath !== "/") loginUrl.searchParams.set("next", originalPath);
+  return NextResponse.rewrite(loginUrl);
 }
 
 export const config = {
