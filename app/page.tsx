@@ -1,5 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-shell";
-import { getDashboardFromSupabase } from "@/lib/supabase-dashboard";
+import { getDashboardFromSupabase, getDashboardPeriodFromSupabase } from "@/lib/supabase-dashboard";
 import type { DashboardFilters, DashboardPayload } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +55,28 @@ function rangeFor(view: "month" | "quarter" | "year", month?: string, quarter?: 
   };
 }
 
+function previousPeriodRange(view: "month" | "quarter" | "year", start: string) {
+  const currentStart = new Date(`${start}T00:00:00Z`);
+  const year = currentStart.getUTCFullYear();
+  const monthIndex = currentStart.getUTCMonth();
+
+  if (view === "year") {
+    const previousYear = year - 1;
+    return { start: `${previousYear}-01-01`, end: `${previousYear}-12-31` };
+  }
+
+  const spanMonths = view === "quarter" ? 3 : 1;
+  const previousStart = new Date(Date.UTC(year, monthIndex - spanMonths, 1));
+  const previousYear = previousStart.getUTCFullYear();
+  const previousMonth = previousStart.getUTCMonth();
+  const previousEnd = new Date(Date.UTC(previousYear, previousMonth + spanMonths, 0));
+
+  return {
+    start: previousStart.toISOString().slice(0, 10),
+    end: previousEnd.toISOString().slice(0, 10)
+  };
+}
+
 export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const classType = value(params, "classType");
@@ -72,9 +94,20 @@ export default async function HomePage({ searchParams }: PageProps) {
     classType: classType === "hot-sculpt" || classType === "yoga" ? classType : "all"
   };
 
+  const previousRange = previousPeriodRange(view, range.start);
+  const previousFilters: DashboardFilters = {
+    start: previousRange.start,
+    end: previousRange.end,
+    classType: filters.classType
+  };
+
   let payload: DashboardPayload | null = null;
+  let previousPayload: DashboardPayload | null = null;
   try {
-    payload = await getDashboardFromSupabase(filters);
+    [payload, previousPayload] = await Promise.all([
+      getDashboardFromSupabase(filters),
+      getDashboardPeriodFromSupabase(previousFilters).catch(() => null)
+    ]);
   } catch {
     return (
       <main className="page-shell">
@@ -87,5 +120,15 @@ export default async function HomePage({ searchParams }: PageProps) {
     );
   }
 
-  return <DashboardShell data={payload} filters={filters} />;
+  return (
+    <DashboardShell
+      data={payload}
+      filters={filters}
+      previousPeriod={previousPayload ? {
+        weekday: previousPayload.weekday,
+        start: previousRange.start,
+        end: previousRange.end
+      } : null}
+    />
+  );
 }
