@@ -19,29 +19,58 @@ function searchParams(filters: DashboardFilters) {
 }
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const retryableStatus = (status: number) => status === 408 || status === 425 || status === 429 || status >= 500;
 
-async function fetchWithRetry(url: string, secret: string) {
+async function fetchWithRetry(url: string, secret: string, attempts = 4) {
   let lastError: unknown = null;
+  let lastResponse: Response | null = null;
 
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12_000);
+
     try {
       const response = await fetch(url, {
         headers: { "x-kora-dashboard-secret": secret },
-        cache: "no-store"
+        cache: "no-store",
+        signal: controller.signal
       });
 
-      if (response.ok || response.status < 500) return response;
+      clearTimeout(timeout);
+      lastResponse = response;
+
+      if (response.ok || !retryableStatus(response.status)) return response;
       lastError = new Error(`Supabase respondeu ${response.status}`);
     } catch (error) {
+      clearTimeout(timeout);
       lastError = error;
     }
 
-    if (attempt < 2) await wait(350 * (attempt + 1));
+    if (attempt < attempts - 1) {
+      const delays = [300, 700, 1_200, 1_800];
+      await wait(delays[Math.min(attempt, delays.length - 1)]);
+    }
   }
+
+  if (lastResponse) return lastResponse;
 
   throw lastError instanceof Error
     ? lastError
     : new Error("Falha transitória ao carregar dados do Supabase.");
+}
+
+async function optionalJson<T>(url: string, secret: string, label: string): Promise<T | null> {
+  try {
+    const response = await fetchWithRetry(url, secret, 4);
+    if (!response.ok) {
+      console.warn(`[Kora dashboard] ${label} indisponível: HTTP ${response.status}`);
+      return null;
+    }
+    return (await response.json()) as T;
+  } catch (error) {
+    console.warn(`[Kora dashboard] ${label} falhou no carregamento inicial`, error);
+    return null;
+  }
 }
 
 export async function getDashboardPeriodFromSupabase(
@@ -50,8 +79,8 @@ export async function getDashboardPeriodFromSupabase(
   const secret = process.env.KORA_DASHBOARD_READ_SECRET;
   if (!secret) throw new Error("Conexão segura com o Supabase não configurada.");
 
-  const response = await fetchWithRetry(`${dashboardEndpoint}${searchParams(filters)}`, secret);
-  if (!response.ok) throw new Error("Não foi possível carregar o período comparativo.");
+  const response = await fetchWithRetry(`${dashboardEndpoint}${searchParams(filters)}`, secret, 4);
+  if (!response.ok) throw new Error(`Não foi possível carregar o período comparativo (${response.status}).`);
   return (await response.json()) as DashboardPayload;
 }
 
@@ -62,32 +91,38 @@ export async function getDashboardFromSupabase(
   if (!secret) throw new Error("Conexão segura com o Supabase não configurada.");
 
   const suffix = searchParams(filters);
-  const request = (endpoint: string, withFilters = true) =>
-    fetchWithRetry(`${endpoint}${withFilters ? suffix : ""}`, secret);
 
-  const [dashboardResponse, studioResponse, customerResponse, intelligenceResponse] = await Promise.all([
-    request(dashboardEndpoint),
-    request(studioEndpoint),
-    request(customerEndpoint),
-    request(clientIntelligenceEndpoint, false)
-  ]);
-
-  if (!dashboardResponse.ok || !studioResponse.ok || !customerResponse.ok) {
-    throw new Error("Não foi possível carregar os dados salvos no Supabase.");
+  // The core dashboard is the only mandatory request. On a cold first access,
+  // auxiliary Edge Functions may wake at different speeds; they must never
+  // take the whole report down.
+  const dashboardResponse = await fetchWithRetry(`${dashboardEndpoint}${suffix}`, secret, 5);
+  if (!dashboardResponse.ok) {
+    throw new Error(`Não foi possível carregar os dados principais do Supabase (${dashboardResponse.status}).`);
   }
 
   const dashboard = (await dashboardResponse.json()) as DashboardPayload;
-  const studio = (await studioResponse.json()) as StudioInsights;
-  const customers = (await customerResponse.json()) as CustomerInsights;
-  const clientIntelligence = intelligenceResponse.ok
-    ? ((await intelligenceResponse.json()) as ClientIntelligence | null)
-    : null;
+
+  // Warm/enrich only after the core response succeeded. This avoids opening
+  // four cold Edge Function requests at the exact same instant on first load.
+  const [studio, customers, clientIntelligence] = await Promise.all([
+    optionalJson<StudioInsights>(`${studioEndpoint}${suffix}`, secret, "studio insights"),
+    optionalJson<CustomerInsights>(`${customerEndpoint}${suffix}`, secret, "customer insights"),
+    optionalJson<ClientIntelligence | null>(clientIntelligenceEndpoint, secret, "client intelligence")
+  ]);
+
+  const base: DashboardPayload = {
+    ...dashboard,
+    studio: studio ?? dashboard.studio,
+    customers: customers ?? dashboard.customers,
+    clientIntelligence: clientIntelligence ?? dashboard.clientIntelligence ?? null
+  };
+
+  // If the studio enrichment is temporarily unavailable, the core report is
+  // still fully usable with the values already returned by the main endpoint.
+  if (!studio) return base;
 
   return {
-    ...dashboard,
-    studio,
-    customers,
-    clientIntelligence,
+    ...base,
     teachers: studio.teachers.map((teacher) => ({
       name: teacher.name,
       classes: teacher.classes,
