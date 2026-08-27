@@ -7,6 +7,7 @@ import "./management-simplification.css";
 import "./period-filter.css";
 import "./experience-polish.css";
 import "./weekday-response.css";
+import "./standalone-app.css";
 
 export const metadata: Metadata = {
   title: "Kora Health Lab",
@@ -21,10 +22,16 @@ export const metadata: Metadata = {
     capable: true,
     title: "Kora",
     statusBarStyle: "black-translucent"
+  },
+  other: {
+    "mobile-web-app-capable": "yes"
   }
 };
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
   themeColor: "#3c4536"
 };
 
