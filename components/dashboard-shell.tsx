@@ -1,13 +1,8 @@
 import { KoraLogo } from "@/components/kora-logo";
 import { ClientIntelligencePanel, TeacherRetentionPanel } from "@/components/client-intelligence-panels";
 import { CommercialHistoryChart } from "@/components/commercial-history-chart";
+import { PeriodFilter } from "@/components/period-filter";
 import type { DashboardFilters, DashboardPayload } from "@/lib/types";
-
-const classOptions = [
-  { value: "all", label: "Todas as modalidades" },
-  { value: "hot-sculpt", label: "Hot Sculpt" },
-  { value: "yoga", label: "Yoga" }
-] as const;
 
 function format(value: number) { return value.toLocaleString("pt-BR"); }
 function money(value: number) { return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
@@ -35,7 +30,6 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
   const maxOrigin = Math.max(1, ...data.originEntries.map((item) => item.value));
   const maxTime = Math.max(1, ...(studio?.timeWindows.map((item) => item.occupancy) ?? [1]));
   const maxTeacher = Math.max(1, ...(studio?.teachers.map((item) => item.occupancy) ?? [1]));
-  const currentClass = filters.classType ?? "all";
   const start = data.filters?.start ?? filters.start ?? "";
   const end = data.filters?.end ?? filters.end ?? "";
   const observedEnd = periodObservedEnd(data.periodLabel, end);
@@ -58,13 +52,7 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
         <div className="hero-stat"><span>recorte atual</span><strong>{data.periodLabel}</strong><small>{data.heroMix}</small></div>
       </section>
 
-      <form className="filter-deck" action="/" method="get">
-        <div className="filter-title"><span>Recorte</span><strong>Escolha o que quer entender</strong></div>
-        <label><span>De</span><input name="start" type="date" defaultValue={start} /></label>
-        <label><span>Até</span><input name="end" type="date" defaultValue={end} /></label>
-        <label className="filter-wide"><span>Modalidade</span><select name="classType" defaultValue={currentClass}>{classOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
-        <button type="submit">Atualizar visão</button>
-      </form>
+      <PeriodFilter filters={filters} />
 
       <section className="signal-row">
         <div className="signal-intro"><p className="kicker">Sinais do período</p><h2>O que merece atenção agora.</h2></div>
@@ -139,7 +127,7 @@ export function DashboardShell({ data, filters }: { data: DashboardPayload; filt
         <article className="report-card card-full retention-card">
           <div className="section-title"><div><p className="kicker">Retenção no recorte</p><h2>Funil filtrável de frequência</h2></div><p>{data.retentionNote}</p></div>
           <div className="retention-funnel">{funnel.map((stage, index) => <div className="retention-stage" key={stage.visits}><div className="retention-fill" style={{ width: `${Math.max(8, (stage.clients / funnelBase) * 100)}%` }}><span>{stage.label}</span><strong>{format(stage.clients)}</strong><small>{stage.shareOfBase}% da base</small></div>{index > 0 ? <div className="retention-conversion"><b>{stage.conversionFromPrevious}%</b><span>avançam da etapa anterior</span></div> : <div className="retention-conversion base"><b>100%</b><span>base observada</span></div>}</div>)}</div>
-          <div className="data-caveat">Este funil respeita o filtro de datas acima. A “Jornada real” usa o histórico consolidado de participantes e serve para leitura de aquisição e retenção.</div>
+          <div className="data-caveat">Este funil respeita o filtro de período acima. A “Jornada real” usa o histórico consolidado de participantes e serve para leitura de aquisição e retenção.</div>
         </article>
 
         <article className="report-card card-half"><div className="section-title"><div><p className="kicker">Comportamento</p><h2>Base e retorno</h2></div><p>Leitura que amadurece junto do histórico.</p></div><div className="behavior-stack">{data.customerGroups.map((group) => <div className="behavior-item" key={group.title}><span>{group.title}</span><strong>{typeof group.value === "number" ? format(group.value) : group.value}</strong><small>{group.note}</small></div>)}</div></article>
