@@ -1,0 +1,89 @@
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+button,
+a,
+select,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (display-mode: standalone) {
+  html {
+    background: #3c4536;
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    z-index: 9999;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top, 0px);
+    background: #3c4536;
+    pointer-events: none;
+  }
+
+  .kora-report {
+    padding-top: max(18px, calc(env(safe-area-inset-top, 0px) + 8px));
+    padding-bottom: max(40px, calc(env(safe-area-inset-bottom, 0px) + 22px));
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+  }
+
+  .kora-auth-shell,
+  .kora-loading-shell {
+    min-height: 100dvh;
+  }
+
+  .kora-auth-brand {
+    top: max(24px, calc(env(safe-area-inset-top, 0px) + 14px));
+  }
+
+  .kora-auth-panel {
+    padding-bottom: max(34px, calc(env(safe-area-inset-bottom, 0px) + 18px));
+  }
+
+  .kora-loading-shell {
+    padding-top: max(28px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(28px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(20px, env(safe-area-inset-left, 0px));
+    padding-right: max(20px, env(safe-area-inset-right, 0px));
+  }
+
+  .commercial-chart-wrap,
+  .revenue-weekly,
+  .weekly-trend,
+  .teacher-retention-table,
+  .channel-retention-table {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (display-mode: standalone) and (max-width: 700px) {
+  .kora-report {
+    width: 100%;
+    margin: 0;
+    padding-top: max(12px, calc(env(safe-area-inset-top, 0px) + 6px));
+    padding-left: max(12px, calc(env(safe-area-inset-left, 0px) + 8px));
+    padding-right: max(12px, calc(env(safe-area-inset-right, 0px) + 8px));
+    padding-bottom: max(30px, calc(env(safe-area-inset-bottom, 0px) + 18px));
+  }
+
+  .kora-auth-panel {
+    padding-top: max(88px, calc(env(safe-area-inset-top, 0px) + 72px));
+  }
+
+  .kora-auth-brand {
+    top: max(24px, calc(env(safe-area-inset-top, 0px) + 12px));
+    left: max(22px, calc(env(safe-area-inset-left, 0px) + 16px));
+  }
+}
