@@ -4,6 +4,7 @@ import "./dashboard-enhancements.css";
 import "./revenue-retention.css";
 import "./commercial-chart-refinement.css";
 import "./management-simplification.css";
+import "./period-filter.css";
 
 export const metadata: Metadata = {
   title: "Kora Health Lab BI",
