@@ -18,13 +18,12 @@ export const metadata: Metadata = {
     icon: "/icon",
     apple: "/apple-icon"
   },
-  appleWebApp: {
-    capable: true,
-    title: "Kora",
-    statusBarStyle: "black-translucent"
-  },
   other: {
-    "mobile-web-app-capable": "yes"
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-title": "Kora",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+    "format-detection": "telephone=no"
   }
 };
 
