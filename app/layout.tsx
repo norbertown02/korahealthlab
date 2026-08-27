@@ -6,6 +6,7 @@ import "./commercial-chart-refinement.css";
 import "./management-simplification.css";
 import "./period-filter.css";
 import "./experience-polish.css";
+import "./weekday-response.css";
 
 export const metadata: Metadata = {
   title: "Kora Health Lab",
