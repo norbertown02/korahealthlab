@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function LoginForm({ nextPath = "/" }: { nextPath?: string }) {
+export function LoginForm() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -13,6 +13,7 @@ export function LoginForm({ nextPath = "/" }: { nextPath?: string }) {
     event.preventDefault();
     setError("");
     setLoading(true);
+
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
@@ -20,26 +21,17 @@ export function LoginForm({ nextPath = "/" }: { nextPath?: string }) {
         body: JSON.stringify({ password })
       });
       const result = await response.json().catch(() => ({}));
+
       if (!response.ok) {
         setError(result.error ?? "Não foi possível entrar.");
         setLoading(false);
         return;
       }
 
-      const safeNext = nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/";
-
-      // When middleware renders the login UI over the original protected URL,
-      // keep the iOS Home Screen web app in the same navigation context.
-      // A Next.js router refresh re-requests the current server components and
-      // lets middleware see the new auth cookie without performing a browser
-      // reload, which can make iOS fall back to Safari chrome.
-      if (window.location.pathname !== "/login") {
-        router.refresh();
-        return;
-      }
-
-      // Direct browser visits to /login still need to enter the requested route.
-      router.replace(safeNext);
+      // Login, loading and dashboard now share the same physical route.
+      // Refresh only the server component tree so the iOS Home Screen app
+      // never performs a document navigation that can escape to Safari.
+      router.refresh();
     } catch {
       setError("Falha de conexão. Tente novamente.");
       setLoading(false);
