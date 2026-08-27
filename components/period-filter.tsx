@@ -19,8 +19,10 @@ export function PeriodFilter({ filters }: { filters: DashboardFilters }) {
   const now = new Date();
   const defaultMonth = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", timeZone: "America/Sao_Paulo" }).format(now);
   const yearNow = currentYear();
+  const initialMonth = filters.month ?? defaultMonth;
   const [view, setView] = useState<ViewMode>(initialView);
-  const [month, setMonth] = useState(filters.month ?? defaultMonth);
+  const [monthYear, setMonthYear] = useState(initialMonth.slice(0, 4));
+  const [monthNumber, setMonthNumber] = useState(initialMonth.slice(5, 7));
   const [quarter, setQuarter] = useState(filters.quarter ?? `${yearNow}-Q${Math.floor((Number(defaultMonth.slice(5, 7)) - 1) / 3) + 1}`);
   const [year, setYear] = useState(filters.year ?? String(yearNow));
 
@@ -46,15 +48,24 @@ export function PeriodFilter({ filters }: { filters: DashboardFilters }) {
       </label>
 
       {view === "month" ? (
-        <label className="period-choice">
-          <span>Mês</span>
-          <select name="month" value={month} onChange={(e) => setMonth(e.target.value)}>
-            {years.flatMap((y) => monthLabels.map((label, index) => {
-              const value = `${y}-${String(index + 1).padStart(2, "0")}`;
-              return <option key={value} value={value}>{label} {y}</option>;
-            }))}
-          </select>
-        </label>
+        <>
+          <label className="period-choice">
+            <span>Ano</span>
+            <select value={monthYear} onChange={(e) => setMonthYear(e.target.value)}>
+              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </label>
+          <label className="period-choice">
+            <span>Mês</span>
+            <select value={monthNumber} onChange={(e) => setMonthNumber(e.target.value)}>
+              {monthLabels.map((label, index) => {
+                const value = String(index + 1).padStart(2, "0");
+                return <option key={value} value={value}>{label}</option>;
+              })}
+            </select>
+          </label>
+          <input type="hidden" name="month" value={`${monthYear}-${monthNumber}`} />
+        </>
       ) : null}
 
       {view === "quarter" ? (
