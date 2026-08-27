@@ -1,0 +1,114 @@
+.weekday-response-card { overflow:hidden; }
+.weekday-average-chart {
+  min-height:0;
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:10px;
+  align-items:stretch;
+}
+.weekday-average-chart .weekday-col {
+  min-width:0;
+  display:grid;
+  grid-template-rows:30px 142px 18px 14px;
+  gap:7px;
+  align-items:end;
+  text-align:center;
+}
+.weekday-delta {
+  min-width:0;
+  height:26px;
+  padding:0 6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  border-radius:999px;
+  border:1px solid rgba(51,64,44,.08);
+  background:rgba(51,64,44,.045);
+  color:var(--muted);
+  white-space:nowrap;
+}
+.weekday-delta span { font:600 10px/1 var(--mono); }
+.weekday-delta small { color:inherit!important; font:7px/1 var(--mono)!important; letter-spacing:.03em; }
+.weekday-delta.positive { color:#5f7952; background:rgba(113,139,94,.09); border-color:rgba(113,139,94,.14); }
+.weekday-delta.negative { color:#b46042; background:rgba(185,98,62,.08); border-color:rgba(185,98,62,.13); }
+.weekday-bar-zone {
+  height:142px;
+  padding-top:22px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  position:relative;
+  border-bottom:1px solid rgba(51,64,44,.11);
+  background:
+    linear-gradient(to top, rgba(51,64,44,.045) 1px, transparent 1px) 0 0 / 100% 33.333%;
+}
+.weekday-bar-zone::after {
+  content:"";
+  position:absolute;
+  inset:auto 12% -1px;
+  height:1px;
+  background:rgba(51,64,44,.16);
+}
+.weekday-bar.average-bar {
+  position:relative;
+  width:min(72%,46px);
+  min-height:0;
+  padding:0;
+  display:block;
+  overflow:visible;
+  border-radius:9px 9px 2px 2px;
+  background:linear-gradient(180deg,#d6a07b 0%,#bb633f 100%);
+  box-shadow:0 8px 16px rgba(185,98,62,.1);
+  transition:height .28s ease, transform .18s ease;
+}
+.weekday-average-chart .weekday-col:hover .average-bar { transform:translateY(-2px); }
+.weekday-bar.average-bar > span {
+  position:absolute;
+  top:-19px;
+  left:50%;
+  transform:translateX(-50%);
+  color:var(--olive);
+  font:600 10px/1 var(--mono);
+  white-space:nowrap;
+}
+.weekday-average-chart .weekday-col > b {
+  align-self:center;
+  color:var(--olive);
+  font:600 12px/1 var(--mono);
+}
+.weekday-average-caption {
+  align-self:start;
+  color:var(--muted)!important;
+  font-size:8px!important;
+  white-space:nowrap;
+}
+.weekday-chart-legend {
+  margin-top:18px;
+  padding-top:12px;
+  display:flex;
+  align-items:center;
+  gap:18px;
+  border-top:1px solid var(--line);
+  color:var(--muted);
+  font-size:9px;
+}
+.weekday-chart-legend span { display:flex; align-items:center; gap:7px; }
+.weekday-chart-legend i { width:9px; height:9px; display:inline-block; border-radius:3px; }
+.legend-average { background:linear-gradient(180deg,#d6a07b,#bb633f); }
+.legend-delta { border-radius:999px!important; background:#849574; }
+
+@media (max-width:700px) {
+  .weekday-response-card { padding-left:14px!important; padding-right:14px!important; }
+  .weekday-average-chart { gap:4px; }
+  .weekday-average-chart .weekday-col { grid-template-rows:24px 116px 16px; gap:5px; }
+  .weekday-delta { height:22px; padding:0 3px; }
+  .weekday-delta span { font-size:8px; }
+  .weekday-delta small { display:none!important; }
+  .weekday-bar-zone { height:116px; padding-top:18px; }
+  .weekday-bar.average-bar { width:min(72%,30px); border-radius:7px 7px 2px 2px; }
+  .weekday-bar.average-bar > span { display:block!important; top:-16px; font-size:8px; }
+  .weekday-average-chart .weekday-col > b { font-size:10px; }
+  .weekday-average-caption { display:none!important; }
+  .weekday-chart-legend { margin-top:14px; gap:10px; flex-wrap:wrap; font-size:8px; }
+}
