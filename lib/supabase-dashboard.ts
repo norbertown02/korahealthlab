@@ -73,6 +73,82 @@ async function optionalJson<T>(url: string, secret: string, label: string): Prom
   }
 }
 
+function normalizedLabel(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR");
+}
+
+function integerFromDisplay(value: string) {
+  const digits = value.replace(/[^0-9-]/g, "");
+  return digits ? Number(digits) : Number.NaN;
+}
+
+function applyResidualClassPass(payload: DashboardPayload): DashboardPayload {
+  // Regra operacional validada no Kora:
+  // ClassPass = total de entradas - Wellhub - TotalPass - entradas próprias (totem/Kora).
+  // O total de entradas é a fonte primária; agregadores classificam essas entradas,
+  // nunca são somados novamente ao total.
+  const totalCard = payload.summaryCards.find((item) => {
+    const label = normalizedLabel(item.label);
+    return label === "entradas" || label.includes("acessos");
+  });
+  const totalEntries = totalCard ? integerFromDisplay(totalCard.value) : Number.NaN;
+  if (!Number.isFinite(totalEntries)) return payload;
+
+  let wellhub = 0;
+  let totalPass = 0;
+  let ownEntries = 0;
+  let classPassTone = "var(--gold)";
+  let foundOwnChannel = false;
+
+  for (const item of payload.originEntries) {
+    const label = normalizedLabel(item.label);
+    if (label.includes("classpass")) {
+      classPassTone = item.tone;
+      continue;
+    }
+    if (label.includes("wellhub") || label.includes("gympass")) {
+      wellhub += item.value;
+      continue;
+    }
+    if (label.includes("totalpass")) {
+      totalPass += item.value;
+      continue;
+    }
+    if (
+      label.includes("totem") ||
+      label.includes("diret") ||
+      label.includes("kora") ||
+      label.includes("avulso") ||
+      label.includes("venda") ||
+      label.includes("contrato") ||
+      label.includes("credito")
+    ) {
+      ownEntries += item.value;
+      foundOwnChannel = true;
+    }
+  }
+
+  // Só substituímos a leitura quando a origem própria está identificável.
+  // Isso evita inventar ClassPass em payloads antigos/incompletos.
+  if (!foundOwnChannel) return payload;
+
+  const classPass = Math.max(0, totalEntries - wellhub - totalPass - ownEntries);
+  const kept = payload.originEntries.filter(
+    (item) => !normalizedLabel(item.label).includes("classpass")
+  );
+
+  return {
+    ...payload,
+    originEntries: [
+      ...kept,
+      { label: "ClassPass", value: classPass, tone: classPassTone }
+    ]
+  };
+}
+
 export async function getDashboardPeriodFromSupabase(
   filters: DashboardFilters = {}
 ): Promise<DashboardPayload> {
@@ -100,7 +176,7 @@ export async function getDashboardFromSupabase(
     throw new Error(`Não foi possível carregar os dados principais do Supabase (${dashboardResponse.status}).`);
   }
 
-  const dashboard = (await dashboardResponse.json()) as DashboardPayload;
+  const dashboard = applyResidualClassPass((await dashboardResponse.json()) as DashboardPayload);
 
   // Warm/enrich only after the core response succeeded. This avoids opening
   // four cold Edge Function requests at the exact same instant on first load.
