@@ -112,11 +112,11 @@ export function DashboardShell({
 
         <CommercialHistoryChart data={data.monthly} />
 
-        <article className="report-card card-full section-marker"><p className="kicker">03 / Professoras</p><h2>Ocupação e fidelidade à experiência</h2></article>
+        <article className="report-card card-full section-marker"><p className="kicker">03 / Professores</p><h2>Ocupação e fidelidade à experiência</h2></article>
 
         <article className="report-card card-full">
-          <div className="section-title"><div><p className="kicker">Professoras</p><h2>Quem sustenta a experiência</h2></div><p>Ranking por ocupação, com volume suficiente para leitura.</p></div>
-          <div className="teacher-table"><div className="teacher-head"><span>Professora</span><span>Aulas</span><span>Ocupação</span><span>Vagas ocupadas</span></div>{(studio?.teachers ?? []).slice(0, 8).map((teacher, index) => <div className="teacher-line" key={teacher.name}><span><em>{String(index + 1).padStart(2, "0")}</em>{teacher.name}</span><span>{teacher.classes}</span><span className="teacher-progress"><i style={{ width: `${(teacher.occupancy / maxTeacher) * 100}%` }} />{teacher.occupancy}%</span><span>{teacher.occupied} / {teacher.capacity}</span></div>)}</div>
+          <div className="section-title"><div><p className="kicker">Professores</p><h2>Quem sustenta a experiência</h2></div><p>Ranking por ocupação, com volume suficiente para leitura.</p></div>
+          <div className="teacher-table"><div className="teacher-head"><span>Professor(a)</span><span>Aulas</span><span>Ocupação</span><span>Vagas ocupadas</span></div>{(studio?.teachers ?? []).map((teacher, index) => <div className="teacher-line" key={teacher.name}><span><em>{String(index + 1).padStart(2, "0")}</em>{teacher.name}</span><span>{teacher.classes}</span><span className="teacher-progress"><i style={{ width: `${(teacher.occupancy / maxTeacher) * 100}%` }} />{teacher.occupancy}%</span><span>{teacher.occupied} / {teacher.capacity}</span></div>)}</div>
           <TeacherRetentionPanel data={data.clientIntelligence} />
         </article>
 
