@@ -14,17 +14,17 @@ function teacherName(value: string) {
 export function TeacherRetentionPanel({ data }: { data?: ClientIntelligence | null }) {
   if (!data) return null;
   const rows = data.teacher_retention.rows
-    .filter((row) => row.first_experiences >= 20)
+    .filter((row) => row.first_experiences > 0)
     .sort((a, b) => b.first_experiences - a.first_experiences);
 
   return (
     <div className="retention-deep-dive">
       <div className="intelligence-heading">
-        <div><p className="mini-title">Retenção por professora</p><h3>A primeira experiência gera retorno?</h3></div>
+        <div><p className="mini-title">Retenção por professor</p><h3>A primeira experiência gera retorno?</h3></div>
         <p>Compare retenção, não só ocupação. D+30 usa apenas alunos que já tiveram 30 dias completos para voltar.</p>
       </div>
       <div className="teacher-retention-table compact">
-        <div className="teacher-retention-head"><span>Professora da 1ª aula</span><span>Primeiras</span><span>D+30</span><span>2ª visita</span><span>Volta à mesma prof.</span></div>
+        <div className="teacher-retention-head"><span>Professor(a) da 1ª aula</span><span>Primeiras</span><span>D+30</span><span>2ª visita</span><span>Volta à mesma prof.</span></div>
         {rows.map((row) => (
           <div className="teacher-retention-row" key={row.teacher}>
             <strong>{teacherName(row.teacher)}</strong>
