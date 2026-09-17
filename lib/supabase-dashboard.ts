@@ -87,9 +87,8 @@ function integerFromDisplay(value: string) {
 
 function applyResidualClassPass(payload: DashboardPayload): DashboardPayload {
   // Regra operacional validada no Kora:
-  // ClassPass = total de entradas - Wellhub - TotalPass - entradas próprias (totem/Kora).
-  // O total de entradas é a fonte primária; agregadores classificam essas entradas,
-  // nunca são somados novamente ao total.
+  // ClassPass = total de entradas - Wellhub - TotalPass - entradas próprias (Kora/totem).
+  // O total de entradas é a fonte primária. As origens apenas classificam esse total.
   const totalCard = payload.summaryCards.find((item) => {
     const label = normalizedLabel(item.label);
     return label === "entradas" || label.includes("acessos");
@@ -101,49 +100,50 @@ function applyResidualClassPass(payload: DashboardPayload): DashboardPayload {
   let totalPass = 0;
   let ownEntries = 0;
   let classPassTone = "var(--gold)";
-  let foundOwnChannel = false;
 
   for (const item of payload.originEntries) {
     const label = normalizedLabel(item.label);
+
     if (label.includes("classpass")) {
       classPassTone = item.tone;
       continue;
     }
+
     if (label.includes("wellhub") || label.includes("gympass")) {
       wellhub += item.value;
       continue;
     }
+
     if (label.includes("totalpass")) {
       totalPass += item.value;
       continue;
     }
-    if (
-      label.includes("totem") ||
-      label.includes("diret") ||
-      label.includes("kora") ||
-      label.includes("avulso") ||
-      label.includes("venda") ||
-      label.includes("contrato") ||
-      label.includes("credito")
-    ) {
-      ownEntries += item.value;
-      foundOwnChannel = true;
-    }
+
+    // Pela regra do Kora, qualquer origem já classificada que não seja
+    // Wellhub/TotalPass/ClassPass é considerada entrada própria (Kora/totem).
+    ownEntries += item.value;
   }
 
-  // Só substituímos a leitura quando a origem própria está identificável.
-  // Isso evita inventar ClassPass em payloads antigos/incompletos.
-  if (!foundOwnChannel) return payload;
-
   const classPass = Math.max(0, totalEntries - wellhub - totalPass - ownEntries);
-  const kept = payload.originEntries.filter(
-    (item) => !normalizedLabel(item.label).includes("classpass")
-  );
+
+  const ownRows = payload.originEntries.filter((item) => {
+    const label = normalizedLabel(item.label);
+    return !label.includes("classpass");
+  });
+
+  console.info("[Kora ClassPass residual]", {
+    totalEntries,
+    wellhub,
+    totalPass,
+    ownEntries,
+    classPass,
+    channels: payload.originEntries.map((item) => ({ label: item.label, value: item.value }))
+  });
 
   return {
     ...payload,
     originEntries: [
-      ...kept,
+      ...ownRows,
       { label: "ClassPass", value: classPass, tone: classPassTone }
     ]
   };
