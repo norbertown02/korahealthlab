@@ -87,19 +87,41 @@ function integerFromDisplay(value: string) {
 
 function applyResidualClassPass(payload: DashboardPayload): DashboardPayload {
   // Regra operacional validada no Kora:
-  // ClassPass = total de entradas - Wellhub - TotalPass - entradas próprias (Kora/totem).
-  // O total de entradas é a fonte primária. As origens apenas classificam esse total.
+  // ClassPass = entradas totais - Wellhub - TotalPass - entradas próprias (Kora/totem).
+  // No payload atual, "Entradas diretas" inclui também o residual do ClassPass,
+  // por isso NÃO pode ser usado como entradas próprias.
   const totalCard = payload.summaryCards.find((item) => {
     const label = normalizedLabel(item.label);
-    return label === "entradas" || label.includes("acessos");
+    return (
+      label.includes("entradas totais") ||
+      label.includes("acessos totais") ||
+      label === "entradas" ||
+      label === "acessos"
+    );
   });
+
+  const ownCard = payload.summaryCards.find((item) => {
+    const label = normalizedLabel(item.label);
+    return (
+      label.includes("totem") ||
+      label.includes("entradas proprias") ||
+      label === "vendas"
+    );
+  });
+
   const totalEntries = totalCard ? integerFromDisplay(totalCard.value) : Number.NaN;
-  if (!Number.isFinite(totalEntries)) return payload;
+  const ownEntries = ownCard ? integerFromDisplay(ownCard.value) : Number.NaN;
+
+  // Só recalcula quando as duas bases canônicas estão disponíveis.
+  if (!Number.isFinite(totalEntries) || !Number.isFinite(ownEntries)) return payload;
 
   let wellhub = 0;
   let totalPass = 0;
-  let ownEntries = 0;
-  let classPassTone = "var(--gold)";
+  let wellhubTone = "#748361";
+  let totalPassTone = "#a77c59";
+  let ownTone = "#b9623e";
+  let classPassTone = "#b89b71";
+  const passthrough: typeof payload.originEntries = [];
 
   for (const item of payload.originEntries) {
     const label = normalizedLabel(item.label);
@@ -111,40 +133,48 @@ function applyResidualClassPass(payload: DashboardPayload): DashboardPayload {
 
     if (label.includes("wellhub") || label.includes("gympass")) {
       wellhub += item.value;
+      wellhubTone = item.tone;
       continue;
     }
 
     if (label.includes("totalpass")) {
       totalPass += item.value;
+      totalPassTone = item.tone;
       continue;
     }
 
-    // Pela regra do Kora, qualquer origem já classificada que não seja
-    // Wellhub/TotalPass/ClassPass é considerada entrada própria (Kora/totem).
-    ownEntries += item.value;
+    // "Entradas diretas" é o universo não classificado por agregador:
+    // Kora/totem + ClassPass. Usamos apenas a cor e substituímos pelo
+    // valor canônico de entradas próprias.
+    if (
+      label.includes("entrada") &&
+      (label.includes("diret") || label.includes("propr") || label.includes("kora") || label.includes("totem"))
+    ) {
+      ownTone = item.tone;
+      continue;
+    }
+
+    passthrough.push(item);
   }
 
   const classPass = Math.max(0, totalEntries - wellhub - totalPass - ownEntries);
-
-  const ownRows = payload.originEntries.filter((item) => {
-    const label = normalizedLabel(item.label);
-    return !label.includes("classpass");
-  });
 
   console.info("[Kora ClassPass residual]", {
     totalEntries,
     wellhub,
     totalPass,
     ownEntries,
-    classPass,
-    channels: payload.originEntries.map((item) => ({ label: item.label, value: item.value }))
+    classPass
   });
 
   return {
     ...payload,
     originEntries: [
-      ...ownRows,
-      { label: "ClassPass", value: classPass, tone: classPassTone }
+      { label: "Kora / Totem", value: ownEntries, tone: ownTone },
+      { label: "Wellhub", value: wellhub, tone: wellhubTone },
+      { label: "TotalPass", value: totalPass, tone: totalPassTone },
+      { label: "ClassPass", value: classPass, tone: classPassTone },
+      ...passthrough
     ]
   };
 }
@@ -157,7 +187,7 @@ export async function getDashboardPeriodFromSupabase(
 
   const response = await fetchWithRetry(`${dashboardEndpoint}${searchParams(filters)}`, secret, 4);
   if (!response.ok) throw new Error(`Não foi possível carregar o período comparativo (${response.status}).`);
-  return (await response.json()) as DashboardPayload;
+  return applyResidualClassPass((await response.json()) as DashboardPayload);
 }
 
 export async function getDashboardFromSupabase(
