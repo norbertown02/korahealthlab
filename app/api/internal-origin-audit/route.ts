@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
     entriesByMonth,
     salesByMonth,
     aggregatorsByMonth: aggByMonth,
-    entryTypes: grouped(entries.map((r)=>r.entry_type)),
+    entryTypes: grouped(entries.map((r)=>r.entryType)),
     devices: grouped(entries.map((r)=>r.device)),
     entrySignatures: [...entrySignatures.values()].sort((a,b)=>b.count-a.count).slice(0,30),
     saleItemLabels: grouped(saleItemLabels).slice(0,100),
