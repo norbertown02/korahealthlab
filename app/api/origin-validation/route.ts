@@ -42,6 +42,7 @@ function selected(endpoint:string, json:any) {
   if (endpoint === "kora-client-intelligence") {
     return {
       source: json?.source ?? null,
+      origin_method: json?.origin_method ?? null,
       period_start: json?.period_start ?? null,
       period_end: json?.period_end ?? null,
       identity_method: json?.identity_method ?? null,
