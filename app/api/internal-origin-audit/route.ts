@@ -84,6 +84,147 @@ async function auditAggregators(start: string, end: string) {
   return all;
 }
 
+function dateOnly(value?: string | null) {
+  return (value ?? "").slice(0, 10);
+}
+
+function normalizedName(value?: string | null) {
+  return (value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+}
+
+function classSessionsFromSale(sale: EvoSale) {
+  const entitlements: Array<{ start: string; sessions: number; unlimited: boolean; label: string }> = [];
+  for (const item of sale.saleItens ?? []) {
+    const label = String(item.description ?? item.item ?? "");
+    const norm = label.toLowerCase();
+    if (/nutric|massag|ayur|consulta/.test(norm)) continue;
+    const start = String((item as Record<string, unknown>).membershipStartDate ?? sale.saleDate ?? sale.saleDateServer ?? "").slice(0,10);
+    if (!start) continue;
+    if (/ilimitad/.test(norm)) {
+      entitlements.push({ start, sessions: 0, unlimited: true, label });
+      continue;
+    }
+    const sessionMatch = label.match(/\((\d+)\s*sess[oõ]es?\)/i);
+    const creditMatch = label.match(/(\d+)\s*cr[eé]ditos?/i);
+    const sessions = sessionMatch ? Number(sessionMatch[1]) : creditMatch ? Number(creditMatch[1]) : 0;
+    if (sessions > 0) entitlements.push({ start, sessions, unlimited: false, label });
+  }
+  return entitlements;
+}
+
+function classifyOrigins(entries: EvoEntry[], aggregators: EvoAggregatorCheckin[], salesHistory: EvoSale[]) {
+  const aggPools = new Map<string, string[]>();
+  const aggNamePools = new Map<string, string[]>();
+
+  for (const agg of aggregators) {
+    const day = dateOnly(agg.checkinDate);
+    const origin = String(agg.aggregator ?? "unknown");
+    if (agg.idMember != null && day) {
+      const key = `${agg.idMember}|${day}`;
+      const list = aggPools.get(key) ?? [];
+      list.push(origin);
+      aggPools.set(key, list);
+    }
+    const name = normalizedName(agg.name);
+    if (name && day) {
+      const key = `${name}|${day}`;
+      const list = aggNamePools.get(key) ?? [];
+      list.push(origin);
+      aggNamePools.set(key, list);
+    }
+  }
+
+  const direct: EvoEntry[] = [];
+  const aggregatorMatched: Record<string, number> = {};
+  let unmatchedAggregatorEntries = 0;
+
+  const sortedEntries = [...entries].sort((a,b)=>
+    String(a.date ?? a.dateTurn ?? "").localeCompare(String(b.date ?? b.dateTurn ?? ""))
+  );
+
+  for (const entry of sortedEntries) {
+    const day = dateOnly(entry.date ?? entry.dateTurn);
+    let origin: string | undefined;
+
+    if (entry.idMember != null && day) {
+      const key = `${entry.idMember}|${day}`;
+      const list = aggPools.get(key);
+      if (list?.length) origin = list.shift();
+    }
+
+    if (!origin) {
+      const name = normalizedName(entry.nameMember ?? entry.nameProspect);
+      if (name && day) {
+        const key = `${name}|${day}`;
+        const list = aggNamePools.get(key);
+        if (list?.length) origin = list.shift();
+      }
+    }
+
+    if (origin) {
+      aggregatorMatched[origin] = (aggregatorMatched[origin] ?? 0) + 1;
+    } else {
+      direct.push(entry);
+    }
+  }
+
+  for (const list of aggPools.values()) unmatchedAggregatorEntries += list.length;
+
+  const entitlementsByMember = new Map<number, Array<{ start: string; sessions: number; unlimited: boolean; label: string }>>();
+  for (const sale of salesHistory) {
+    if (sale.idMember == null) continue;
+    const items = classSessionsFromSale(sale);
+    if (!items.length) continue;
+    const current = entitlementsByMember.get(sale.idMember) ?? [];
+    current.push(...items);
+    entitlementsByMember.set(sale.idMember, current);
+  }
+  for (const items of entitlementsByMember.values()) items.sort((a,b)=>a.start.localeCompare(b.start));
+
+  let kora = 0;
+  let noKoraEntitlement = 0;
+  let sameDayOrEarlierSale = 0;
+  const unresolvedByMonth: Record<string, number> = {};
+
+  for (const entry of direct) {
+    const day = dateOnly(entry.date ?? entry.dateTurn);
+    const items = entry.idMember != null ? (entitlementsByMember.get(entry.idMember) ?? []) : [];
+    let matched = false;
+
+    for (const item of items) {
+      if (item.start > day) break;
+      if (item.unlimited) {
+        matched = true;
+        break;
+      }
+      if (item.sessions > 0) {
+        item.sessions -= 1;
+        matched = true;
+        break;
+      }
+    }
+
+    if (matched) {
+      kora++;
+      sameDayOrEarlierSale++;
+    } else {
+      noKoraEntitlement++;
+      const month = day.slice(0,7) || "unknown";
+      unresolvedByMonth[month] = (unresolvedByMonth[month] ?? 0) + 1;
+    }
+  }
+
+  return {
+    totalEntries: entries.length,
+    aggregatorMatched,
+    directEntries: direct.length,
+    koraByEntitlement: kora,
+    unresolvedDirect: noKoraEntitlement,
+    unresolvedByMonth,
+    unmatchedAggregatorRecords: unmatchedAggregatorEntries
+  };
+}
+
 function interestingFields(value: unknown, path = "", out: Record<string, string | number | boolean | null> = {}) {
   if (!value || typeof value !== "object") return out;
   const obj = value as Record<string, unknown>;
@@ -128,11 +269,13 @@ export async function GET(request: NextRequest) {
   const end = request.nextUrl.searchParams.get("end") ?? "2026-09-30";
   let entries: EvoEntry[] = [];
   let sales: EvoSale[] = [];
+  let salesHistory: EvoSale[] = [];
   let aggregators: EvoAggregatorCheckin[] = [];
   try {
-    [entries, sales, aggregators] = await Promise.all([
+    [entries, sales, salesHistory, aggregators] = await Promise.all([
       auditEntries(start, end),
       auditSales(start, end),
+      auditSales("2026-04-01", end),
       auditAggregators(start, end)
     ]);
   } catch (error) {
@@ -204,6 +347,7 @@ export async function GET(request: NextRequest) {
     devices: grouped(entries.map((r)=>r.device)),
     entrySignatures: [...entrySignatures.values()].sort((a,b)=>b.count-a.count).slice(0,30),
     saleItemLabels: grouped(saleItemLabels).slice(0,100),
-    saleSignatures: [...saleSignatures.values()].sort((a,b)=>b.count-a.count).slice(0,30)
+    saleSignatures: [...saleSignatures.values()].sort((a,b)=>b.count-a.count).slice(0,30),
+    classificationAudit: classifyOrigins(entries, aggregators, salesHistory)
   });
 }
