@@ -126,38 +126,101 @@ function rangeFor(view: "month" | "quarter" | "year", month?: string, quarter?: 
   };
 }
 
-function previousPeriodRange(view: "month" | "quarter" | "year", start: string) {
+function isoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function observedEndForRange(start: string, end: string) {
+  const today = saoPauloToday();
+  return today >= start && today <= end ? today : end;
+}
+
+function previousPeriodBounds(view: "month" | "quarter" | "year", start: string) {
   const currentStart = new Date(`${start}T00:00:00Z`);
   const year = currentStart.getUTCFullYear();
   const monthIndex = currentStart.getUTCMonth();
 
   if (view === "year") {
     const previousYear = year - 1;
-    return { start: `${previousYear}-01-01`, end: `${previousYear}-12-31`, alignedDays: false };
+    return { start: `${previousYear}-01-01`, end: `${previousYear}-12-31` };
   }
 
   const spanMonths = view === "quarter" ? 3 : 1;
   const previousStart = new Date(Date.UTC(year, monthIndex - spanMonths, 1));
-  const previousYear = previousStart.getUTCFullYear();
-  const previousMonth = previousStart.getUTCMonth();
-  const previousEnd = new Date(Date.UTC(previousYear, previousMonth + spanMonths, 0));
+  const previousEnd = new Date(Date.UTC(
+    previousStart.getUTCFullYear(),
+    previousStart.getUTCMonth() + spanMonths,
+    0
+  ));
 
-  if (view === "month" && start.slice(0, 7) === saoPauloMonth()) {
-    const elapsedDay = Number(saoPauloToday().slice(8, 10));
-    const lastDayPreviousMonth = new Date(Date.UTC(previousYear, previousMonth + 1, 0)).getUTCDate();
-    const alignedDay = Math.min(elapsedDay, lastDayPreviousMonth);
-    return {
-      start: previousStart.toISOString().slice(0, 10),
-      end: `${previousYear}-${String(previousMonth + 1).padStart(2, "0")}-${String(alignedDay).padStart(2, "0")}`,
-      alignedDays: true,
-      elapsedDay: alignedDay
-    };
+  return { start: isoDate(previousStart), end: isoDate(previousEnd) };
+}
+
+function inclusiveCalendarDays(start: string, end: string) {
+  const startDate = new Date(`${start}T00:00:00Z`);
+  const endDate = new Date(`${end}T00:00:00Z`);
+  return Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / 86400000) + 1);
+}
+
+function classDaysMondayToSaturday(start: string, end: string) {
+  if (end < start) return 0;
+  const cursor = new Date(`${start}T00:00:00Z`);
+  const stop = new Date(`${end}T00:00:00Z`);
+  let count = 0;
+
+  while (cursor <= stop) {
+    if (cursor.getUTCDay() !== 0) count++;
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return count;
+}
+
+function endAfterClassDays(start: string, requestedDays: number, maximumEnd: string) {
+  const cursor = new Date(`${start}T00:00:00Z`);
+  const limit = new Date(`${maximumEnd}T00:00:00Z`);
+  let counted = 0;
+  let last = new Date(cursor);
+
+  while (cursor <= limit) {
+    last = new Date(cursor);
+    if (cursor.getUTCDay() !== 0) {
+      counted++;
+      if (counted >= requestedDays) break;
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
 
+  return { end: isoDate(last), days: counted };
+}
+
+function endAfterCalendarDays(start: string, requestedDays: number, maximumEnd: string) {
+  const startDate = new Date(`${start}T00:00:00Z`);
+  const candidate = new Date(startDate);
+  candidate.setUTCDate(candidate.getUTCDate() + Math.max(0, requestedDays - 1));
+  const limit = new Date(`${maximumEnd}T00:00:00Z`);
+  return isoDate(candidate > limit ? limit : candidate);
+}
+
+function comparisonRanges(view: "month" | "quarter" | "year", start: string, end: string) {
+  const currentObservedEnd = observedEndForRange(start, end);
+  const previous = previousPeriodBounds(view, start);
+  const classDays = classDaysMondayToSaturday(start, currentObservedEnd);
+  const calendarDays = inclusiveCalendarDays(start, currentObservedEnd);
+  const operational = endAfterClassDays(previous.start, classDays, previous.end);
+  const revenueEnd = endAfterCalendarDays(previous.start, calendarDays, previous.end);
+
   return {
-    start: previousStart.toISOString().slice(0, 10),
-    end: previousEnd.toISOString().slice(0, 10),
-    alignedDays: false
+    currentObservedEnd,
+    operational: {
+      start: previous.start,
+      end: operational.end,
+      days: operational.days
+    },
+    revenue: {
+      start: previous.start,
+      end: revenueEnd,
+      days: calendarDays
+    }
   };
 }
 
@@ -192,23 +255,33 @@ export default async function HomePage({ searchParams }: PageProps) {
     classType: classType === "hot-sculpt" || classType === "yoga" ? classType : "all"
   };
 
-  const previousRange = previousPeriodRange(view, range.start);
-  const previousFilters: DashboardFilters = {
-    start: previousRange.start,
-    end: previousRange.end,
+  const comparisons = comparisonRanges(view, range.start, range.end);
+  const operationalPreviousFilters: DashboardFilters = {
+    start: comparisons.operational.start,
+    end: comparisons.operational.end,
+    classType: filters.classType
+  };
+  const revenuePreviousFilters: DashboardFilters = {
+    start: comparisons.revenue.start,
+    end: comparisons.revenue.end,
     classType: filters.classType
   };
 
   let payload: DashboardPayload | null = null;
   let previousPayload: DashboardPayload | null = null;
+  let previousRevenuePayload: DashboardPayload | null = null;
   try {
-    // Load the current report first. The previous-period comparison is useful,
-    // but it should not compete with the main report during a cold first access.
     payload = await loadDashboardWithRecovery(filters);
-    previousPayload = await getDashboardPeriodFromSupabase(previousFilters).catch((error) => {
-      console.warn("[Kora dashboard] comparativo anterior indisponível nesta carga", error);
-      return null;
-    });
+    [previousPayload, previousRevenuePayload] = await Promise.all([
+      getDashboardPeriodFromSupabase(operationalPreviousFilters).catch((error) => {
+        console.warn("[Kora dashboard] comparativo operacional anterior indisponível nesta carga", error);
+        return null;
+      }),
+      getDashboardPeriodFromSupabase(revenuePreviousFilters).catch((error) => {
+        console.warn("[Kora dashboard] comparativo de vendas anterior indisponível nesta carga", error);
+        return null;
+      })
+    ]);
   } catch (error) {
     console.error("[Kora dashboard] falha definitiva ao carregar o recorte", error);
     return (
@@ -226,13 +299,18 @@ export default async function HomePage({ searchParams }: PageProps) {
     <DashboardShell
       data={payload}
       filters={filters}
+      currentObservedEnd={comparisons.currentObservedEnd}
       previousPeriod={previousPayload ? {
         data: previousPayload,
-        start: previousRange.start,
-        end: previousRange.end,
-        comparisonLabel: previousRange.alignedDays
-          ? `mesmos ${previousRange.elapsedDay} dias`
-          : "mês anterior"
+        start: comparisons.operational.start,
+        end: comparisons.operational.end,
+        comparisonLabel: `mesmos ${comparisons.operational.days} dias de aula`
+      } : null}
+      previousRevenuePeriod={previousRevenuePayload ? {
+        data: previousRevenuePayload,
+        start: comparisons.revenue.start,
+        end: comparisons.revenue.end,
+        comparisonLabel: `mesmos ${comparisons.revenue.days} dias corridos`
       } : null}
     />
   );
