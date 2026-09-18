@@ -42,11 +42,20 @@ function periodObservedEnd(periodLabel: string, fallback: string) {
 export function DashboardShell({
   data,
   filters,
-  previousPeriod
+  currentObservedEnd,
+  previousPeriod,
+  previousRevenuePeriod
 }: {
   data: DashboardPayload;
   filters: DashboardFilters;
+  currentObservedEnd: string;
   previousPeriod?: {
+    data: DashboardPayload;
+    start: string;
+    end: string;
+    comparisonLabel: string;
+  } | null;
+  previousRevenuePeriod?: {
     data: DashboardPayload;
     start: string;
     end: string;
@@ -62,19 +71,24 @@ export function DashboardShell({
   const maxTeacher = Math.max(1, ...(studio?.teachers.map((item) => item.occupancy) ?? [1]));
   const start = data.filters?.start ?? filters.start ?? "";
   const end = data.filters?.end ?? filters.end ?? "";
-  const observedEnd = periodObservedEnd(data.periodLabel, end);
+  const observedEnd = currentObservedEnd || periodObservedEnd(data.periodLabel, end);
   const weekly = data.weeklyTrend ?? [];
   const weeklyValues = weekly.flatMap((item) => item.entries === null ? [] : [item.entries]);
   const weeklyMax = Math.max(1, ...weeklyValues);
   const revenueMax = Math.max(1, ...(revenue?.weekly.map((item) => item.value) ?? [1]));
   const funnelBase = funnel[0]?.clients ?? 1;
   const previousData = previousPeriod?.data;
+  const previousRevenueData = previousRevenuePeriod?.data;
   const comparisonLabel = previousPeriod?.comparisonLabel ?? "mês anterior";
+  const revenueComparisonLabel = previousRevenuePeriod?.comparisonLabel ?? "mês anterior";
   const previousOrigins = new Map(
     (previousData?.originEntries ?? []).map((item) => [normalized(item.label), item.value])
   );
   const previousModalities = new Map(
     (previousData?.studio?.modalities ?? []).map((item) => [item.key, item.occupancy])
+  );
+  const previousTeachers = new Map(
+    (previousData?.studio?.teachers ?? []).map((item) => [normalized(item.name), item.occupancy])
   );
   const currentSustained = summaryCount(data, ["2+ dias"]);
   const currentUnique = summaryCount(data, ["clientes unicos"]);
@@ -132,7 +146,16 @@ export function DashboardShell({
           <div className="origin-list">{data.originEntries.map((item) => {
             const previousValue = previousOrigins.get(normalized(item.label));
             const delta = relativeDelta(item.value, previousValue);
-            return <div className="origin-row" key={item.label}><span>{item.label}</span><div><i style={{ width: `${(item.value / maxOrigin) * 100}%`, backgroundColor: item.tone }} /></div><div className="origin-value"><b>{format(item.value)}</b>{previousValue !== undefined ? <small className="micro-compare">{deltaText(delta, "%", comparisonLabel)}</small> : null}</div></div>;
+            return (
+              <div className="origin-row" key={item.label}>
+                <div className="origin-main">
+                  <span>{item.label}</span>
+                  <div className="origin-track"><i style={{ width: `${(item.value / maxOrigin) * 100}%`, backgroundColor: item.tone }} /></div>
+                  <b>{format(item.value)}</b>
+                </div>
+                {previousValue !== undefined ? <small className="origin-compare">{deltaText(delta, "%", comparisonLabel)}</small> : null}
+              </div>
+            );
           })}</div>
           <small className="footnote">Agregadores classificam o acesso existente; não são somados ao total novamente.</small>
         </article>
@@ -141,11 +164,6 @@ export function DashboardShell({
           current={data.weekday}
           currentStart={start}
           currentEnd={observedEnd}
-          previous={previousPeriod ? {
-            weekday: previousPeriod.data.weekday,
-            start: previousPeriod.start,
-            end: previousPeriod.end
-          } : null}
         />
 
         <article className="report-card card-full weekly-trend-card">
@@ -159,7 +177,7 @@ export function DashboardShell({
         <article className="report-card card-full revenue-card">
           <div className="section-title"><div><p className="kicker">Receita</p><h2>Performance comercial do período</h2></div><p>{revenue?.note ?? "Sem dados de venda no recorte."}</p></div>
           <div className="revenue-kpis">
-            <div><span>Valor vendido</span><strong>{revenue ? money(revenue.totalValue) : "—"}</strong>{revenue && previousData?.revenue ? <small className="micro-compare revenue-compare">{deltaText(relativeDelta(revenue.totalValue, previousData.revenue.totalValue), "%", comparisonLabel)}</small> : null}<small>{revenue?.salesCount ?? 0} vendas</small></div>
+            <div><span>Valor vendido</span><strong>{revenue ? money(revenue.totalValue) : "—"}</strong>{revenue && previousRevenueData?.revenue ? <small className="micro-compare revenue-compare">{deltaText(relativeDelta(revenue.totalValue, previousRevenueData.revenue.totalValue), "%", revenueComparisonLabel)}</small> : null}<small>{revenue?.salesCount ?? 0} vendas</small></div>
             <div><span>Ticket médio</span><strong>{revenue ? money(revenue.averageTicket) : "—"}</strong><small>por venda</small></div>
             <div><span>Compradores</span><strong>{revenue ? format(revenue.buyers) : "—"}</strong><small>clientes distintos</small></div>
             <div><span>Receita / comprador</span><strong>{revenue ? money(revenue.revenuePerBuyer) : "—"}</strong><small>no recorte</small></div>
@@ -178,7 +196,25 @@ export function DashboardShell({
 
         <article className="report-card card-full">
           <div className="section-title"><div><p className="kicker">Professores</p><h2>Quem sustenta a experiência</h2></div><p>Ranking por ocupação, com volume suficiente para leitura.</p></div>
-          <div className="teacher-table"><div className="teacher-head"><span>Professor(a)</span><span>Aulas</span><span>Ocupação</span><span>Vagas ocupadas</span></div>{(studio?.teachers ?? []).map((teacher, index) => <div className="teacher-line" key={teacher.name}><span><em>{String(index + 1).padStart(2, "0")}</em>{teacher.name}</span><span>{teacher.classes}</span><span className="teacher-progress"><i style={{ width: `${(teacher.occupancy / maxTeacher) * 100}%` }} />{teacher.occupancy}%</span><span>{teacher.occupied} / {teacher.capacity}</span></div>)}</div>
+          <div className="teacher-table">
+            <div className="teacher-head"><span>Professor(a)</span><span>Aulas</span><span>Ocupação</span><span>Vagas ocupadas</span></div>
+            {(studio?.teachers ?? []).map((teacher, index) => {
+              const previousOccupancy = previousTeachers.get(normalized(teacher.name));
+              const delta = pointDelta(teacher.occupancy, previousOccupancy);
+              return (
+                <div className="teacher-line" key={teacher.name}>
+                  <span><em>{String(index + 1).padStart(2, "0")}</em>{teacher.name}</span>
+                  <span>{teacher.classes}</span>
+                  <span className="teacher-progress">
+                    <i style={{ width: `${(teacher.occupancy / maxTeacher) * 100}%` }} />
+                    <b>{teacher.occupancy}%</b>
+                    {previousOccupancy !== undefined ? <small>{deltaText(delta, " p.p.", comparisonLabel)}</small> : null}
+                  </span>
+                  <span>{teacher.occupied} / {teacher.capacity}</span>
+                </div>
+              );
+            })}
+          </div>
           <TeacherRetentionPanel data={data.clientIntelligence} />
         </article>
 
