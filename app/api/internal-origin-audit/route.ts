@@ -265,6 +265,32 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (request.nextUrl.searchParams.get("mode") === "swagger-detail") {
+    const apiPath = request.nextUrl.searchParams.get("apiPath") ?? "";
+    const response = await fetch(`${EVO_BASE}/swagger/v1/swagger.json`, { headers: evoHeaders(), cache: "no-store" });
+    const json = await response.json() as {
+      paths?: Record<string, unknown>;
+      components?: { schemas?: Record<string, unknown> };
+    };
+    const operation = json.paths?.[apiPath] ?? null;
+    const refs = new Set<string>();
+    const scan = (value: unknown) => {
+      if (!value || typeof value !== "object") return;
+      if (Array.isArray(value)) { value.forEach(scan); return; }
+      for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+        if (key === "$ref" && typeof item === "string" && item.startsWith("#/components/schemas/")) {
+          refs.add(item.split("/").pop() ?? "");
+        } else scan(item);
+      }
+    };
+    scan(operation);
+    const schemas: Record<string, unknown> = {};
+    for (const name of refs) {
+      if (name && json.components?.schemas?.[name]) schemas[name] = json.components.schemas[name];
+    }
+    return NextResponse.json({ apiPath, operation, schemas });
+  }
+
   if (request.nextUrl.searchParams.get("mode") === "swagger") {
     const candidates = ["/swagger/v1/swagger.json", "/swagger/swagger.json"];
     const results: Array<Record<string, unknown>> = [];
