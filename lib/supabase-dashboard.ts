@@ -185,9 +185,21 @@ export async function getDashboardPeriodFromSupabase(
   const secret = process.env.KORA_DASHBOARD_READ_SECRET;
   if (!secret) throw new Error("Conexão segura com o Supabase não configurada.");
 
-  const response = await fetchWithRetry(`${dashboardEndpoint}${searchParams(filters)}`, secret, 4);
+  const suffix = searchParams(filters);
+  const response = await fetchWithRetry(`${dashboardEndpoint}${suffix}`, secret, 4);
   if (!response.ok) throw new Error(`Não foi possível carregar o período comparativo (${response.status}).`);
-  return applyResidualClassPass((await response.json()) as DashboardPayload);
+
+  const dashboard = applyResidualClassPass((await response.json()) as DashboardPayload);
+  const studio = await optionalJson<StudioInsights>(
+    `${studioEndpoint}${suffix}`,
+    secret,
+    "studio insights comparativo"
+  );
+
+  return {
+    ...dashboard,
+    studio: studio ?? dashboard.studio
+  };
 }
 
 export async function getDashboardFromSupabase(
