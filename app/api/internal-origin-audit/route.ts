@@ -265,6 +265,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (request.nextUrl.searchParams.get("mode") === "swagger-schema") {
+    const schemaName = request.nextUrl.searchParams.get("schemaName") ?? "";
+    const response = await fetch(`${EVO_BASE}/swagger/v1/swagger.json`, { headers: evoHeaders(), cache: "no-store" });
+    const json = await response.json() as { components?: { schemas?: Record<string, unknown> } };
+    return NextResponse.json({ schemaName, schema: json.components?.schemas?.[schemaName] ?? null });
+  }
+
   if (request.nextUrl.searchParams.get("mode") === "swagger-detail") {
     const apiPath = request.nextUrl.searchParams.get("apiPath") ?? "";
     const response = await fetch(`${EVO_BASE}/swagger/v1/swagger.json`, { headers: evoHeaders(), cache: "no-store" });
