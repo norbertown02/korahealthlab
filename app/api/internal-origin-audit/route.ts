@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/db";
+import { fetchAggregatorCheckins, fetchEntries, fetchSales } from "@/lib/evo-client";
 
 const TOKEN = "kora-origin-audit-8f4d31b7";
 
@@ -43,46 +43,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = getSupabaseAdmin();
   const start = request.nextUrl.searchParams.get("start") ?? "2026-06-01";
   const end = request.nextUrl.searchParams.get("end") ?? "2026-09-30";
+  const window = { dateStart: start, dateEnd: end };
 
-  const [entriesResult, salesResult, aggregatorsResult] = await Promise.all([
-    supabase
-      .from("fact_entries")
-      .select("id_member,entry_date,entry_timestamp,entry_type,device,raw_payload")
-      .gte("entry_date", start)
-      .lte("entry_date", end)
-      .limit(10000),
-    supabase
-      .from("fact_sales")
-      .select("id_sale,id_member,sale_date,sale_timestamp,raw_payload")
-      .gte("sale_date", start)
-      .lte("sale_date", end)
-      .limit(10000),
-    supabase
-      .from("fact_aggregator_checkins")
-      .select("id_member,aggregator_name,checkin_date,checkin_timestamp,status,raw_payload")
-      .gte("checkin_date", start)
-      .lte("checkin_date", end)
-      .limit(10000)
+  const [entries, sales, aggregators] = await Promise.all([
+    fetchEntries(window),
+    fetchSales(window),
+    fetchAggregatorCheckins(window)
   ]);
-
-  const error = entriesResult.error ?? salesResult.error ?? aggregatorsResult.error;
-  if (error) {
-    return NextResponse.json({ error: error.message, details: error.details, hint: error.hint, code: error.code }, { status: 500 });
-  }
-
-  const entries = entriesResult.data ?? [];
-  const sales = salesResult.data ?? [];
-  const aggregators = aggregatorsResult.data ?? [];
 
   const entrySignatures = new Map<string, { fields: Record<string, unknown>; count: number }>();
   for (const row of entries) {
     const fields = {
-      entry_type: row.entry_type,
+      entry_type: row.entryType,
       device: row.device,
-      ...interestingFields(row.raw_payload)
+      ...interestingFields(row)
     };
     const key = signature(fields);
     const current = entrySignatures.get(key);
@@ -93,7 +69,7 @@ export async function GET(request: NextRequest) {
   const saleItemLabels: string[] = [];
   const saleSignatures = new Map<string, { fields: Record<string, unknown>; count: number }>();
   for (const row of sales) {
-    const raw = row.raw_payload as Record<string, unknown> | null;
+    const raw = row as Record<string, unknown> | null;
     const fields = interestingFields(raw);
     const key = signature(fields);
     const current = saleSignatures.get(key);
@@ -109,21 +85,21 @@ export async function GET(request: NextRequest) {
 
   const aggByMonth: Record<string, Record<string, number>> = {};
   for (const row of aggregators) {
-    const month = String(row.checkin_date ?? "").slice(0,7) || "unknown";
-    const name = String(row.aggregator_name ?? "unknown");
+    const month = String(row.checkinDate ?? "").slice(0,7) || "unknown";
+    const name = String(row.aggregator ?? "unknown");
     aggByMonth[month] ??= {};
     aggByMonth[month][name] = (aggByMonth[month][name] ?? 0) + 1;
   }
 
   const entriesByMonth: Record<string, number> = {};
   for (const row of entries) {
-    const month = String(row.entry_date ?? "").slice(0,7) || "unknown";
+    const month = String((row.date ?? row.dateTurn) ?? "").slice(0,7) || "unknown";
     entriesByMonth[month] = (entriesByMonth[month] ?? 0) + 1;
   }
 
   const salesByMonth: Record<string, number> = {};
   for (const row of sales) {
-    const month = String(row.sale_date ?? "").slice(0,7) || "unknown";
+    const month = String((row.saleDate ?? row.saleDateServer) ?? "").slice(0,7) || "unknown";
     salesByMonth[month] = (salesByMonth[month] ?? 0) + 1;
   }
 
