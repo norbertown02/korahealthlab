@@ -265,6 +265,180 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (request.nextUrl.searchParams.get("mode") === "participant-audit") {
+    const start = request.nextUrl.searchParams.get("start") ?? "2026-06-01";
+    const end = request.nextUrl.searchParams.get("end") ?? start;
+    const env = getEvoEnv();
+
+    type ScheduleRow = { idAtividadeSessao?: number; activityDate?: string };
+    type Enrollment = {
+      idMember?: number | null;
+      name?: string | null;
+      idSaleItem?: number | null;
+      replacement?: boolean;
+      removed?: boolean;
+      suspended?: boolean;
+      status?: number;
+    };
+    type Detail = {
+      idActivitySession?: number;
+      date?: string | null;
+      status?: number;
+      enrollments?: Enrollment[] | null;
+    };
+
+    const sessions = new Map<number, ScheduleRow>();
+    const cursor = new Date(`${start}T00:00:00Z`);
+    const stop = new Date(`${end}T00:00:00Z`);
+
+    while (cursor <= stop) {
+      const date = cursor.toISOString().slice(0, 10);
+      const params = new URLSearchParams({
+        date: `${date}T00:00:00`,
+        showFullWeek: "true",
+        onlyAvailables: "false",
+        take: "500"
+      });
+      if (env.KORA_BRANCH_ID) params.set("idBranch", env.KORA_BRANCH_ID);
+      const rows = await evoJson<ScheduleRow[]>("/api/v1/activities/schedule", params);
+      for (const row of rows) {
+        const day = dateOnly(row.activityDate);
+        if (row.idAtividadeSessao && day >= start && day <= end) sessions.set(row.idAtividadeSessao, row);
+      }
+      cursor.setUTCDate(cursor.getUTCDate() + 7);
+    }
+
+    const details: Detail[] = [];
+    const ids = [...sessions.keys()];
+    for (let i = 0; i < ids.length; i += 12) {
+      const batch = ids.slice(i, i + 12);
+      const got = await Promise.all(batch.map(async (id) => {
+        const params = new URLSearchParams({ idActivitySession: String(id) });
+        try {
+          return await evoJson<Detail>("/api/v1/activities/schedule/detail", params);
+        } catch {
+          return null;
+        }
+      }));
+      details.push(...got.filter(Boolean) as Detail[]);
+    }
+
+    const participantPools = new Map<string, Array<"kora-sale" | "kora-replacement" | "no-sale">>();
+    const participantNamePools = new Map<string, Array<"kora-sale" | "kora-replacement" | "no-sale">>();
+    const participantStats = { total: 0, koraSale: 0, replacement: 0, noSale: 0, removed: 0, suspended: 0 };
+
+    for (const detail of details) {
+      const session = sessions.get(detail.idActivitySession ?? -1);
+      const day = dateOnly(detail.date) || dateOnly(session?.activityDate);
+      for (const p of detail.enrollments ?? []) {
+        participantStats.total++;
+        if (p.removed) { participantStats.removed++; continue; }
+        if (p.suspended) participantStats.suspended++;
+        const cls: "kora-sale" | "kora-replacement" | "no-sale" =
+          p.idSaleItem != null ? "kora-sale" : p.replacement ? "kora-replacement" : "no-sale";
+        if (cls === "kora-sale") participantStats.koraSale++;
+        else if (cls === "kora-replacement") participantStats.replacement++;
+        else participantStats.noSale++;
+
+        if (p.idMember != null && day) {
+          const key = `${p.idMember}|${day}`;
+          const list = participantPools.get(key) ?? [];
+          list.push(cls);
+          participantPools.set(key, list);
+        }
+        const name = normalizedName(p.name);
+        if (name && day) {
+          const key = `${name}|${day}`;
+          const list = participantNamePools.get(key) ?? [];
+          list.push(cls);
+          participantNamePools.set(key, list);
+        }
+      }
+    }
+
+    const [entries, aggregators] = await Promise.all([auditEntries(start, end), auditAggregators(start, end)]);
+
+    const aggPools = new Map<string, string[]>();
+    const aggNamePools = new Map<string, string[]>();
+    for (const agg of aggregators) {
+      const day = dateOnly(agg.checkinDate);
+      const origin = String(agg.aggregator ?? "unknown");
+      if (agg.idMember != null && day) {
+        const key = `${agg.idMember}|${day}`;
+        const list = aggPools.get(key) ?? [];
+        list.push(origin);
+        aggPools.set(key, list);
+      }
+      const name = normalizedName(agg.name);
+      if (name && day) {
+        const key = `${name}|${day}`;
+        const list = aggNamePools.get(key) ?? [];
+        list.push(origin);
+        aggNamePools.set(key, list);
+      }
+    }
+
+    const result: Record<string, number> = {
+      wellhub: 0,
+      totalpass: 0,
+      otherAggregator: 0,
+      koraSale: 0,
+      koraReplacement: 0,
+      participantNoSale: 0,
+      noParticipantMatch: 0
+    };
+
+    for (const entry of entries) {
+      const day = dateOnly(entry.date ?? entry.dateTurn);
+      const memberKey = entry.idMember != null && day ? `${entry.idMember}|${day}` : "";
+      const name = normalizedName(entry.nameMember ?? entry.nameProspect);
+      const nameKey = name && day ? `${name}|${day}` : "";
+
+      let agg: string | undefined;
+      if (memberKey) {
+        const list = aggPools.get(memberKey);
+        if (list?.length) agg = list.shift();
+      }
+      if (!agg && nameKey) {
+        const list = aggNamePools.get(nameKey);
+        if (list?.length) agg = list.shift();
+      }
+
+      if (agg) {
+        const norm = agg.toLowerCase();
+        if (norm.includes("wellhub") || norm.includes("gympass")) result.wellhub++;
+        else if (norm.includes("totalpass")) result.totalpass++;
+        else result.otherAggregator++;
+        continue;
+      }
+
+      let cls: "kora-sale" | "kora-replacement" | "no-sale" | undefined;
+      if (memberKey) {
+        const list = participantPools.get(memberKey);
+        if (list?.length) cls = list.shift();
+      }
+      if (!cls && nameKey) {
+        const list = participantNamePools.get(nameKey);
+        if (list?.length) cls = list.shift();
+      }
+
+      if (cls === "kora-sale") result.koraSale++;
+      else if (cls === "kora-replacement") result.koraReplacement++;
+      else if (cls === "no-sale") result.participantNoSale++;
+      else result.noParticipantMatch++;
+    }
+
+    return NextResponse.json({
+      period: { start, end },
+      sessions: sessions.size,
+      detailsLoaded: details.length,
+      participantStats,
+      entries: entries.length,
+      aggregatorRecords: aggregators.length,
+      classifiedEntries: result
+    });
+  }
+
   if (request.nextUrl.searchParams.get("mode") === "swagger-schema") {
     const schemaName = request.nextUrl.searchParams.get("schemaName") ?? "";
     const response = await fetch(`${EVO_BASE}/swagger/v1/swagger.json`, { headers: evoHeaders(), cache: "no-store" });
