@@ -265,6 +265,195 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (request.nextUrl.searchParams.get("mode") === "unresolved-audit") {
+    const start = request.nextUrl.searchParams.get("start") ?? "2026-06-01";
+    const end = request.nextUrl.searchParams.get("end") ?? start;
+    const env = getEvoEnv();
+
+    const [entries, aggregators, salesHistory] = await Promise.all([
+      auditEntries(start, end),
+      auditAggregators(start, end),
+      auditSales("2026-01-01", end)
+    ]);
+
+    const aggPools = new Map<string, string[]>();
+    const aggNamePools = new Map<string, string[]>();
+    for (const agg of aggregators) {
+      const day = dateOnly(agg.checkinDate);
+      const origin = String(agg.aggregator ?? "unknown");
+      if (agg.idMember != null && day) {
+        const key = `${agg.idMember}|${day}`;
+        const list = aggPools.get(key) ?? [];
+        list.push(origin);
+        aggPools.set(key, list);
+      }
+      const name = normalizedName(agg.name);
+      if (name && day) {
+        const key = `${name}|${day}`;
+        const list = aggNamePools.get(key) ?? [];
+        list.push(origin);
+        aggNamePools.set(key, list);
+      }
+    }
+
+    const direct: EvoEntry[] = [];
+    for (const entry of [...entries].sort((a,b)=>
+      String(a.date ?? a.dateTurn ?? "").localeCompare(String(b.date ?? b.dateTurn ?? ""))
+    )) {
+      const day = dateOnly(entry.date ?? entry.dateTurn);
+      let matched = false;
+      if (entry.idMember != null && day) {
+        const list = aggPools.get(`${entry.idMember}|${day}`);
+        if (list?.length) { list.shift(); matched = true; }
+      }
+      if (!matched) {
+        const name = normalizedName(entry.nameMember ?? entry.nameProspect);
+        if (name && day) {
+          const list = aggNamePools.get(`${name}|${day}`);
+          if (list?.length) { list.shift(); matched = true; }
+        }
+      }
+      if (!matched) direct.push(entry);
+    }
+
+    const entitlementsByMember = new Map<number, Array<{ start: string; sessions: number; unlimited: boolean; label: string }>>();
+    for (const sale of salesHistory) {
+      if (sale.idMember == null) continue;
+      const items = classSessionsFromSale(sale);
+      if (!items.length) continue;
+      const current = entitlementsByMember.get(sale.idMember) ?? [];
+      current.push(...items);
+      entitlementsByMember.set(sale.idMember, current);
+    }
+    for (const items of entitlementsByMember.values()) items.sort((a,b)=>a.start.localeCompare(b.start));
+
+    const unresolved: EvoEntry[] = [];
+    let koraByEntitlement = 0;
+    for (const entry of direct) {
+      const day = dateOnly(entry.date ?? entry.dateTurn);
+      const items = entry.idMember != null ? (entitlementsByMember.get(entry.idMember) ?? []) : [];
+      let matched = false;
+      for (const item of items) {
+        if (item.start > day) break;
+        if (item.unlimited) { matched = true; break; }
+        if (item.sessions > 0) { item.sessions -= 1; matched = true; break; }
+      }
+      if (matched) koraByEntitlement++;
+      else unresolved.push(entry);
+    }
+
+    type MemberSession = {
+      idActivitieSession?: number;
+      date?: string;
+      isReplacement?: boolean;
+      isFinalized?: boolean;
+      presenca?: boolean;
+      statusID?: number;
+      statusName?: string | null;
+    };
+    type Enrollment = {
+      idMember?: number | null;
+      idSaleItem?: number | null;
+      replacement?: boolean;
+      removed?: boolean;
+      suspended?: boolean;
+      status?: number;
+    };
+    type Detail = {
+      idActivitySession?: number;
+      enrollments?: Enrollment[] | null;
+    };
+
+    const resolution = {
+      totalUnresolved: unresolved.length,
+      saleItem: 0,
+      replacement: 0,
+      participantWithoutSaleItem: 0,
+      sessionFoundButParticipantMissing: 0,
+      sessionNotFound: 0,
+      missingMemberId: 0
+    };
+    const checked: Array<{ day: string; result: string }> = [];
+    const detailCache = new Map<number, Detail | null>();
+
+    for (const entry of unresolved) {
+      const day = dateOnly(entry.date ?? entry.dateTurn);
+      if (entry.idMember == null) {
+        resolution.missingMemberId++;
+        checked.push({ day, result: "missing-member-id" });
+        continue;
+      }
+
+      const params = new URLSearchParams({
+        idMember: String(entry.idMember),
+        skip: "0",
+        take: "20",
+        dateStart: `${day}T00:00:00`,
+        dateEnd: `${day}T23:59:59`
+      });
+      if (env.KORA_BRANCH_ID) params.set("idBranch", env.KORA_BRANCH_ID);
+
+      let sessions: MemberSession[] = [];
+      try {
+        sessions = await evoJson<MemberSession[]>("/api/v2/activities/member/sessions", params);
+      } catch {
+        sessions = [];
+      }
+
+      const session = sessions.find((item) => dateOnly(item.date) === day && item.presenca !== false) ?? sessions[0];
+      if (!session?.idActivitieSession) {
+        resolution.sessionNotFound++;
+        checked.push({ day, result: "session-not-found" });
+        continue;
+      }
+
+      if (session.isReplacement) {
+        resolution.replacement++;
+        checked.push({ day, result: "replacement" });
+        continue;
+      }
+
+      let detail = detailCache.get(session.idActivitieSession);
+      if (detail === undefined) {
+        try {
+          detail = await evoJson<Detail>(
+            "/api/v1/activities/schedule/detail",
+            new URLSearchParams({ idActivitySession: String(session.idActivitieSession) })
+          );
+        } catch {
+          detail = null;
+        }
+        detailCache.set(session.idActivitieSession, detail);
+      }
+
+      const participant = detail?.enrollments?.find((p) => p.idMember === entry.idMember && !p.removed);
+      if (!participant) {
+        resolution.sessionFoundButParticipantMissing++;
+        checked.push({ day, result: "participant-missing" });
+      } else if (participant.idSaleItem != null) {
+        resolution.saleItem++;
+        checked.push({ day, result: "sale-item" });
+      } else if (participant.replacement) {
+        resolution.replacement++;
+        checked.push({ day, result: "replacement" });
+      } else {
+        resolution.participantWithoutSaleItem++;
+        checked.push({ day, result: "participant-no-sale-item" });
+      }
+    }
+
+    return NextResponse.json({
+      period: { start, end },
+      entries: entries.length,
+      aggregatorRecords: aggregators.length,
+      directAfterAggregatorMatch: direct.length,
+      koraByEntitlement,
+      unresolvedBeforeParticipantCheck: unresolved.length,
+      resolution,
+      checked
+    });
+  }
+
   if (request.nextUrl.searchParams.get("mode") === "participant-audit") {
     const start = request.nextUrl.searchParams.get("start") ?? "2026-06-01";
     const end = request.nextUrl.searchParams.get("end") ?? start;
