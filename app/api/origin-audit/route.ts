@@ -1,137 +1,131 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchEntries, fetchAggregatorCheckins, fetchSales } from "@/lib/evo-client";
+import { getEvoEnv } from "@/lib/env";
+import type { EvoAggregatorCheckin, EvoEntry } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+const EVO_BASE = "https://evo-integracao-api.w12app.com.br";
 
-function norm(v: unknown) {
-  return String(v ?? "").trim();
+function headers() {
+  const env=getEvoEnv();
+  const configured=env.EVO_BASIC_TOKEN.trim();
+  const token=configured.toLowerCase().startsWith("basic ")
+    ? configured
+    : `Basic ${Buffer.from(`${env.EVO_DNS}:${configured}`).toString("base64")}`;
+  return {Authorization:token,Accept:"text/plain"};
 }
-function add(map: Record<string, number>, key: string) {
-  const k = key || "(vazio)";
-  map[k] = (map[k] ?? 0) + 1;
+async function evoJson<T>(path:string,params:URLSearchParams){
+  const r=await fetch(`${EVO_BASE}${path}?${params.toString()}`,{headers:headers(),cache:"no-store"});
+  if(!r.ok) throw new Error(`EVO ${path} HTTP ${r.status}: ${(await r.text()).slice(0,220)}`);
+  return await r.json() as T;
 }
-function top(map: Record<string, number>, n = 40) {
-  return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,n);
+function day(v?:string|null){return (v??"").slice(0,10);}
+function name(v?:string|null){return (v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();}
+
+async function entries(start:string,end:string){
+  const env=getEvoEnv(); const all:EvoEntry[]=[];
+  for(let skip=0;skip<20000;skip+=1000){
+    const p=new URLSearchParams({registerDateStart:`${start}T00:00:00`,registerDateEnd:`${end}T23:59:59`,take:"1000",skip:String(skip)});
+    if(env.KORA_BRANCH_ID)p.set("idBranch",env.KORA_BRANCH_ID);
+    const page=await evoJson<EvoEntry[]>("/api/v1/entries",p); all.push(...page); if(page.length<1000)break;
+  } return all;
 }
-function fields(rows: Array<Record<string, unknown>>) {
-  const m: Record<string, number> = {};
-  for (const row of rows) for (const k of Object.keys(row)) m[k]=(m[k]??0)+1;
-  return top(m,100);
-}
-function itemName(item: Record<string, unknown>) {
-  return norm(item.item ?? item.description ?? item.name ?? item.title ?? item.product ?? item.productName);
-}
-function saleText(sale: Record<string, unknown>) {
-  const items = Array.isArray(sale.saleItens) ? sale.saleItens as Array<Record<string,unknown>> : [];
-  return items.map(itemName).filter(Boolean).join(" | ").toLowerCase();
+async function aggs(start:string,end:string){
+  const env=getEvoEnv(); const all:EvoAggregatorCheckin[]=[];
+  for(let skip=0;skip<20000;skip+=500){
+    const p=new URLSearchParams({DtStart:`${start}T00:00:00`,DtEnd:`${end}T23:59:59`,Skip:String(skip),Take:"500"});
+    if(env.KORA_BRANCH_ID)p.set("IdBranch",env.KORA_BRANCH_ID);
+    const r=await evoJson<{total:number;list:EvoAggregatorCheckin[]}>("/api/v1/management/aggregators/checkins/search",p);
+    const page=r.list??[]; all.push(...page); if(page.length<500||all.length>=r.total)break;
+  } return all;
 }
 
-async function auditMonth(start:string,end:string) {
-  const [entries, aggregators, sales] = await Promise.all([
-    fetchEntries({dateStart:start,dateEnd:end}),
-    fetchAggregatorCheckins({dateStart:start,dateEnd:end}),
-    fetchSales({dateStart:start,dateEnd:end})
-  ]);
+type Schedule={idAtividadeSessao?:number;activityDate?:string};
+type Enrollment={idMember?:number|null;name?:string|null;idSaleItem?:number|null;replacement?:boolean;removed?:boolean;suspended?:boolean;status?:number};
+type Detail={idActivitySession?:number;date?:string|null;status?:number;enrollments?:Enrollment[]|null};
 
-  const entryTypes: Record<string,number> = {};
-  const devices: Record<string,number> = {};
-  const aggregatorsCount: Record<string,number> = {};
-  const saleItems: Record<string,number> = {};
-  const saleKeys: Record<string,number> = {};
-  const entryRawKeys: Record<string,number> = {};
-  const entrySampleValues: Record<string,Record<string,number>> = {};
+async function participantPools(start:string,end:string){
+  const env=getEvoEnv();
+  const sessions=new Map<number,Schedule>();
+  const cursor=new Date(`${start}T00:00:00Z`), stop=new Date(`${end}T00:00:00Z`);
+  while(cursor<=stop){
+    const d=cursor.toISOString().slice(0,10);
+    const p=new URLSearchParams({date:`${d}T00:00:00`,showFullWeek:"true",onlyAvailables:"false",take:"500"});
+    if(env.KORA_BRANCH_ID)p.set("idBranch",env.KORA_BRANCH_ID);
+    const rows=await evoJson<Schedule[]>("/api/v1/activities/schedule",p);
+    for(const row of rows){
+      const dd=day(row.activityDate);
+      if(row.idAtividadeSessao&&dd>=start&&dd<=end)sessions.set(row.idAtividadeSessao,row);
+    }
+    cursor.setUTCDate(cursor.getUTCDate()+7);
+  }
 
-  for (const e of entries as Array<Record<string,unknown>>) {
-    add(entryTypes,norm(e.entryType));
-    add(devices,norm(e.device));
-    for (const k of Object.keys(e)) add(entryRawKeys,k);
-    for (const [k,v] of Object.entries(e)) {
-      if (["entryType","device","type","description","origin","accessType","method","source","reason"].some(x=>k.toLowerCase().includes(x.toLowerCase()))) {
-        entrySampleValues[k] ??= {};
-        add(entrySampleValues[k], norm(v));
+  const member=new Map<string,Array<"sale"|"replacement"|"no-sale">>();
+  const names=new Map<string,Array<"sale"|"replacement"|"no-sale">>();
+  const stats={sessions:sessions.size,details:0,totalEnrollments:0,sale:0,replacement:0,noSale:0,removed:0};
+
+  const ids=[...sessions.keys()];
+  for(let i=0;i<ids.length;i+=10){
+    const batch=ids.slice(i,i+10);
+    const details=await Promise.all(batch.map(async id=>{
+      try{return await evoJson<Detail>("/api/v1/activities/schedule/detail",new URLSearchParams({idActivitySession:String(id)}));}
+      catch{return null;}
+    }));
+    for(const detail of details){
+      if(!detail)continue; stats.details++;
+      const sd=day(detail.date)||day(sessions.get(detail.idActivitySession??-1)?.activityDate);
+      for(const p of detail.enrollments??[]){
+        stats.totalEnrollments++;
+        if(p.removed){stats.removed++;continue;}
+        const cls:"sale"|"replacement"|"no-sale"=p.idSaleItem!=null?"sale":p.replacement?"replacement":"no-sale";
+        stats[cls==="sale"?"sale":cls==="replacement"?"replacement":"noSale"]++;
+        if(p.idMember!=null&&sd){const k=`${p.idMember}|${sd}`;const a=member.get(k)??[];a.push(cls);member.set(k,a);}
+        const nn=name(p.name); if(nn&&sd){const k=`${nn}|${sd}`;const a=names.get(k)??[];a.push(cls);names.set(k,a);}
       }
     }
   }
-  for (const a of aggregators as Array<Record<string,unknown>>) add(aggregatorsCount,norm(a.aggregator));
-  for (const s of sales as Array<Record<string,unknown>>) {
-    for (const k of Object.keys(s)) add(saleKeys,k);
-    const items = Array.isArray(s.saleItens) ? s.saleItens as Array<Record<string,unknown>> : [];
-    for (const item of items) add(saleItems,itemName(item));
-  }
-
-  const salesByMember = new Map<number, Array<Record<string,unknown>>>();
-  for (const s of sales as Array<Record<string,unknown>>) {
-    const id = Number(s.idMember ?? 0);
-    if (!id) continue;
-    const arr=salesByMember.get(id)??[];
-    arr.push(s); salesByMember.set(id,arr);
-  }
-
-  let entriesWithAnySaleMember=0;
-  let entriesWithSameDaySale=0;
-  let entriesWithPriorSale30d=0;
-  let entriesWithKoraKeywordSale30d=0;
-  const keywordBuckets: Record<string,number>={};
-  const entrySaleExamples: Array<Record<string,unknown>>=[];
-
-  for (const e of entries as Array<Record<string,unknown>>) {
-    const id=Number(e.idMember??0);
-    if(!id) continue;
-    const list=salesByMember.get(id)??[];
-    if(list.length) entriesWithAnySaleMember++;
-    const ed=new Date(String(e.date??e.dateTurn??""));
-    let same=false, prior=false, keyword=false;
-    for (const s of list) {
-      const sd=new Date(String(s.saleDate??s.saleDateServer??""));
-      if(Number.isNaN(ed.getTime())||Number.isNaN(sd.getTime())) continue;
-      const diff=(ed.getTime()-sd.getTime())/86400000;
-      if(Math.abs(diff)<1) same=true;
-      if(diff>=0 && diff<=30) {
-        prior=true;
-        const txt=saleText(s);
-        if(/avul|repos|totem|diaria|diária|aula|credito|crédito|sess|day pass|drop/.test(txt)) {
-          keyword=true;
-          for (const token of ["avul","repos","totem","diaria","diária","aula","credito","crédito","sess","day pass","drop"]) {
-            if(txt.includes(token)) add(keywordBuckets,token);
-          }
-        }
-      }
-    }
-    if(same) entriesWithSameDaySale++;
-    if(prior) entriesWithPriorSale30d++;
-    if(keyword) entriesWithKoraKeywordSale30d++;
-  }
-
-  return {
-    period:{start,end},
-    totals:{entries:entries.length,aggregators:aggregators.length,sales:sales.length},
-    entryTypes:top(entryTypes),
-    devices:top(devices),
-    aggregators:top(aggregatorsCount),
-    saleItems:top(saleItems,80),
-    entryFields:top(entryRawKeys,100),
-    saleFields:top(saleKeys,100),
-    entryCandidateFields:Object.fromEntries(Object.entries(entrySampleValues).map(([k,v])=>[k,top(v,30)])),
-    matchability:{
-      entriesWithMemberId: entries.filter((e:any)=>Number(e.idMember??0)>0).length,
-      entriesWithAnySaleMember,
-      entriesWithSameDaySale,
-      entriesWithPriorSale30d,
-      entriesWithKoraKeywordSale30d,
-      keywordBuckets:top(keywordBuckets)
-    }
-  };
+  return {member,names,stats};
 }
 
-export async function GET(req: NextRequest) {
-  if(req.nextUrl.searchParams.get("key")!=="origin-audit-20260918-7f1c9d") return NextResponse.json({error:"not found"},{status:404});
-  try {
-    const [aug,sep]=await Promise.all([
-      auditMonth("2026-08-01","2026-08-31"),
-      auditMonth("2026-09-01","2026-09-30")
-    ]);
+async function audit(start:string,end:string){
+  const [es,as,pp]=await Promise.all([entries(start,end),aggs(start,end),participantPools(start,end)]);
+  const aggMember=new Map<string,string[]>(), aggName=new Map<string,string[]>();
+  const aggCounts:Record<string,number>={};
+  for(const a of as){
+    const d=day(a.checkinDate), o=String(a.aggregator??"unknown");
+    aggCounts[o]=(aggCounts[o]??0)+1;
+    if(a.idMember!=null&&d){const k=`${a.idMember}|${d}`;const arr=aggMember.get(k)??[];arr.push(o);aggMember.set(k,arr);}
+    const n=name(a.name); if(n&&d){const k=`${n}|${d}`;const arr=aggName.get(k)??[];arr.push(o);aggName.set(k,arr);}
+  }
+
+  const result={wellhub:0,totalpass:0,classpass:0,otherAggregator:0,koraSale:0,koraReplacement:0,participantNoSale:0,noParticipantMatch:0};
+  for(const e of [...es].sort((a,b)=>String(a.date??a.dateTurn??"").localeCompare(String(b.date??b.dateTurn??"")))){
+    const d=day(e.date??e.dateTurn), mk=e.idMember!=null&&d?`${e.idMember}|${d}`:"", nk=name(e.nameMember??e.nameProspect)&&d?`${name(e.nameMember??e.nameProspect)}|${d}`:"";
+    let o:string|undefined;
+    if(mk){const a=aggMember.get(mk);if(a?.length)o=a.shift();}
+    if(!o&&nk){const a=aggName.get(nk);if(a?.length)o=a.shift();}
+    if(o){
+      const n=o.toLowerCase();
+      if(n.includes("wellhub")||n.includes("gympass"))result.wellhub++;
+      else if(n.includes("totalpass"))result.totalpass++;
+      else if(n.includes("classpass"))result.classpass++;
+      else result.otherAggregator++;
+      continue;
+    }
+    let cls:"sale"|"replacement"|"no-sale"|undefined;
+    if(mk){const a=pp.member.get(mk);if(a?.length)cls=a.shift();}
+    if(!cls&&nk){const a=pp.names.get(nk);if(a?.length)cls=a.shift();}
+    if(cls==="sale")result.koraSale++;
+    else if(cls==="replacement")result.koraReplacement++;
+    else if(cls==="no-sale")result.participantNoSale++;
+    else result.noParticipantMatch++;
+  }
+  return {period:{start,end},entries:es.length,aggregatorRecords:as.length,aggregators:aggCounts,participantStats:pp.stats,classified:result,classifiedTotal:Object.values(result).reduce((a,b)=>a+b,0)};
+}
+
+export async function GET(req:NextRequest){
+  if(req.nextUrl.searchParams.get("key")!=="origin-audit-20260918-7f1c9d")return NextResponse.json({error:"not found"},{status:404});
+  try{
+    const [aug,sep]=await Promise.all([audit("2026-08-01","2026-08-31"),audit("2026-09-01","2026-09-30")]);
     return NextResponse.json({aug,sep});
-  } catch(error) {
-    return NextResponse.json({error:error instanceof Error?error.message:String(error)},{status:500});
-  }
+  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:String(e)},{status:500});}
 }
