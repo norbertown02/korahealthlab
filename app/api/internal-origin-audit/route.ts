@@ -65,12 +65,12 @@ async function auditSales(start: string, end: string) {
 async function auditAggregators(start: string, end: string) {
   const env = getEvoEnv();
   const all: EvoAggregatorCheckin[] = [];
-  for (let skip = 0; skip < 20000; skip += 1000) {
+  for (let skip = 0; skip < 20000; skip += 500) {
     const params = new URLSearchParams({
       DtStart: `${start}T00:00:00`,
       DtEnd: `${end}T23:59:59`,
       Skip: String(skip),
-      Take: "1000"
+      Take: "500"
     });
     if (env.KORA_BRANCH_ID) params.set("IdBranch", env.KORA_BRANCH_ID);
     const response = await evoJson<{ total: number; list: EvoAggregatorCheckin[] }>(
@@ -79,7 +79,7 @@ async function auditAggregators(start: string, end: string) {
     );
     const page = response.list ?? [];
     all.push(...page);
-    if (page.length < 1000 || all.length >= response.total) break;
+    if (page.length < 500 || all.length >= response.total) break;
   }
   return all;
 }
