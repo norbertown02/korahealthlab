@@ -83,6 +83,15 @@ function saoPauloMonth() {
   }).format(new Date());
 }
 
+function saoPauloToday() {
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "America/Sao_Paulo"
+  }).format(new Date());
+}
+
 function rangeFor(view: "month" | "quarter" | "year", month?: string, quarter?: string, year?: string) {
   const currentMonth = saoPauloMonth();
   const currentYear = currentMonth.slice(0, 4);
@@ -124,7 +133,7 @@ function previousPeriodRange(view: "month" | "quarter" | "year", start: string) 
 
   if (view === "year") {
     const previousYear = year - 1;
-    return { start: `${previousYear}-01-01`, end: `${previousYear}-12-31` };
+    return { start: `${previousYear}-01-01`, end: `${previousYear}-12-31`, alignedDays: false };
   }
 
   const spanMonths = view === "quarter" ? 3 : 1;
@@ -133,9 +142,22 @@ function previousPeriodRange(view: "month" | "quarter" | "year", start: string) 
   const previousMonth = previousStart.getUTCMonth();
   const previousEnd = new Date(Date.UTC(previousYear, previousMonth + spanMonths, 0));
 
+  if (view === "month" && start.slice(0, 7) === saoPauloMonth()) {
+    const elapsedDay = Number(saoPauloToday().slice(8, 10));
+    const lastDayPreviousMonth = new Date(Date.UTC(previousYear, previousMonth + 1, 0)).getUTCDate();
+    const alignedDay = Math.min(elapsedDay, lastDayPreviousMonth);
+    return {
+      start: previousStart.toISOString().slice(0, 10),
+      end: `${previousYear}-${String(previousMonth + 1).padStart(2, "0")}-${String(alignedDay).padStart(2, "0")}`,
+      alignedDays: true,
+      elapsedDay: alignedDay
+    };
+  }
+
   return {
     start: previousStart.toISOString().slice(0, 10),
-    end: previousEnd.toISOString().slice(0, 10)
+    end: previousEnd.toISOString().slice(0, 10),
+    alignedDays: false
   };
 }
 
@@ -205,9 +227,12 @@ export default async function HomePage({ searchParams }: PageProps) {
       data={payload}
       filters={filters}
       previousPeriod={previousPayload ? {
-        weekday: previousPayload.weekday,
+        data: previousPayload,
         start: previousRange.start,
-        end: previousRange.end
+        end: previousRange.end,
+        comparisonLabel: previousRange.alignedDays
+          ? `mesmos ${previousRange.elapsedDay} dias`
+          : "mês anterior"
       } : null}
     />
   );
