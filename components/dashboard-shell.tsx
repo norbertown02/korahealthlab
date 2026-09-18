@@ -7,6 +7,33 @@ import type { DashboardFilters, DashboardPayload } from "@/lib/types";
 
 function format(value: number) { return value.toLocaleString("pt-BR"); }
 function money(value: number) { return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
+function normalized(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+}
+function relativeDelta(current: number, previous?: number | null) {
+  if (previous === undefined || previous === null) return null;
+  if (previous === 0) return current === 0 ? 0 : null;
+  return ((current - previous) / previous) * 100;
+}
+function pointDelta(current: number, previous?: number | null) {
+  if (previous === undefined || previous === null) return null;
+  return current - previous;
+}
+function deltaText(delta: number | null, suffix: "%" | " p.p.", label: string) {
+  if (delta === null) return `novo vs ${label}`;
+  const sign = delta > 0 ? "+" : "";
+  return `${sign}${delta.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}${suffix} vs ${label}`;
+}
+function summaryCount(data: DashboardPayload | undefined, fragments: string[]) {
+  if (!data) return null;
+  const card = data.summaryCards.find((item) => {
+    const label = normalized(item.label);
+    return fragments.some((fragment) => label.includes(fragment));
+  });
+  if (!card) return null;
+  const digits = card.value.replace(/[^0-9-]/g, "");
+  return digits ? Number(digits) : null;
+}
 function periodObservedEnd(periodLabel: string, fallback: string) {
   const match = periodLabel.match(/(\d{2})\/(\d{2})\/(\d{4})\s*$/);
   return match ? `${match[3]}-${match[2]}-${match[1]}` : fallback;
@@ -19,7 +46,12 @@ export function DashboardShell({
 }: {
   data: DashboardPayload;
   filters: DashboardFilters;
-  previousPeriod?: { weekday: DashboardPayload["weekday"]; start: string; end: string } | null;
+  previousPeriod?: {
+    data: DashboardPayload;
+    start: string;
+    end: string;
+    comparisonLabel: string;
+  } | null;
 }) {
   const studio = data.studio;
   const customers = data.customers;
@@ -36,6 +68,24 @@ export function DashboardShell({
   const weeklyMax = Math.max(1, ...weeklyValues);
   const revenueMax = Math.max(1, ...(revenue?.weekly.map((item) => item.value) ?? [1]));
   const funnelBase = funnel[0]?.clients ?? 1;
+  const previousData = previousPeriod?.data;
+  const comparisonLabel = previousPeriod?.comparisonLabel ?? "mês anterior";
+  const previousOrigins = new Map(
+    (previousData?.originEntries ?? []).map((item) => [normalized(item.label), item.value])
+  );
+  const previousModalities = new Map(
+    (previousData?.studio?.modalities ?? []).map((item) => [item.key, item.occupancy])
+  );
+  const currentSustained = summaryCount(data, ["2+ dias"]);
+  const currentUnique = summaryCount(data, ["clientes unicos"]);
+  const previousSustained = summaryCount(previousData, ["2+ dias"]);
+  const previousUnique = summaryCount(previousData, ["clientes unicos"]);
+  const sustainedShare = currentSustained !== null && currentUnique
+    ? currentSustained / currentUnique * 100
+    : null;
+  const previousSustainedShare = previousSustained !== null && previousUnique
+    ? previousSustained / previousUnique * 100
+    : null;
 
   return (
     <main className="kora-report">
@@ -64,7 +114,11 @@ export function DashboardShell({
 
         <article className="report-card card-wide card-dark">
           <div className="section-title light-title"><div><p className="kicker">Modalidades</p><h2>Ocupação por prática</h2></div><p>Capacidade ocupada, não apenas entradas no estúdio.</p></div>
-          <div className="modality-grid">{(studio?.modalities ?? []).map((modality) => <div className="modality-card" key={modality.key}><div className="modality-top"><span>{modality.name}</span><b>{modality.occupancy}%</b></div><div className="occupancy-track"><span style={{ width: `${modality.occupancy}%` }} /></div><div className="modality-bottom"><span>{format(modality.sessions)} aulas</span><span>{format(modality.occupied)} / {format(modality.capacity)} vagas</span></div></div>)}</div>
+          <div className="modality-grid">{(studio?.modalities ?? []).map((modality) => {
+            const previousOccupancy = previousModalities.get(modality.key);
+            const delta = pointDelta(modality.occupancy, previousOccupancy);
+            return <div className="modality-card" key={modality.key}><div className="modality-top"><span>{modality.name}</span><div className="modality-value"><b>{modality.occupancy}%</b>{previousOccupancy !== undefined ? <small className="micro-compare light">{deltaText(delta, " p.p.", comparisonLabel)}</small> : null}</div></div><div className="occupancy-track"><span style={{ width: `${modality.occupancy}%` }} /></div><div className="modality-bottom"><span>{format(modality.sessions)} aulas</span><span>{format(modality.occupied)} / {format(modality.capacity)} vagas</span></div></div>;
+          })}</div>
           <div className="modality-note">Hot Yoga é lido dentro de Yoga para que a decisão de grade compare famílias de prática, sem diluir a operação.</div>
         </article>
 
@@ -75,7 +129,11 @@ export function DashboardShell({
 
         <article className="report-card card-half">
           <div className="section-title"><div><p className="kicker">Canais</p><h2>De onde vem a presença</h2></div><p>Uma entrada, uma origem.</p></div>
-          <div className="origin-list">{data.originEntries.map((item) => <div className="origin-row" key={item.label}><span>{item.label}</span><div><i style={{ width: `${(item.value / maxOrigin) * 100}%`, backgroundColor: item.tone }} /></div><b>{format(item.value)}</b></div>)}</div>
+          <div className="origin-list">{data.originEntries.map((item) => {
+            const previousValue = previousOrigins.get(normalized(item.label));
+            const delta = relativeDelta(item.value, previousValue);
+            return <div className="origin-row" key={item.label}><span>{item.label}</span><div><i style={{ width: `${(item.value / maxOrigin) * 100}%`, backgroundColor: item.tone }} /></div><div className="origin-value"><b>{format(item.value)}</b>{previousValue !== undefined ? <small className="micro-compare">{deltaText(delta, "%", comparisonLabel)}</small> : null}</div></div>;
+          })}</div>
           <small className="footnote">Agregadores classificam o acesso existente; não são somados ao total novamente.</small>
         </article>
 
@@ -83,7 +141,11 @@ export function DashboardShell({
           current={data.weekday}
           currentStart={start}
           currentEnd={observedEnd}
-          previous={previousPeriod}
+          previous={previousPeriod ? {
+            weekday: previousPeriod.data.weekday,
+            start: previousPeriod.start,
+            end: previousPeriod.end
+          } : null}
         />
 
         <article className="report-card card-full weekly-trend-card">
@@ -97,7 +159,7 @@ export function DashboardShell({
         <article className="report-card card-full revenue-card">
           <div className="section-title"><div><p className="kicker">Receita</p><h2>Performance comercial do período</h2></div><p>{revenue?.note ?? "Sem dados de venda no recorte."}</p></div>
           <div className="revenue-kpis">
-            <div><span>Valor vendido</span><strong>{revenue ? money(revenue.totalValue) : "—"}</strong><small>{revenue?.salesCount ?? 0} vendas</small></div>
+            <div><span>Valor vendido</span><strong>{revenue ? money(revenue.totalValue) : "—"}</strong>{revenue && previousData?.revenue ? <small className="micro-compare revenue-compare">{deltaText(relativeDelta(revenue.totalValue, previousData.revenue.totalValue), "%", comparisonLabel)}</small> : null}<small>{revenue?.salesCount ?? 0} vendas</small></div>
             <div><span>Ticket médio</span><strong>{revenue ? money(revenue.averageTicket) : "—"}</strong><small>por venda</small></div>
             <div><span>Compradores</span><strong>{revenue ? format(revenue.buyers) : "—"}</strong><small>clientes distintos</small></div>
             <div><span>Receita / comprador</span><strong>{revenue ? money(revenue.revenuePerBuyer) : "—"}</strong><small>no recorte</small></div>
@@ -130,7 +192,7 @@ export function DashboardShell({
           <div className="data-caveat">Este funil respeita o filtro de período acima. A “Jornada real” usa o histórico consolidado de participantes e serve para leitura de aquisição e retenção.</div>
         </article>
 
-        <article className="report-card card-half"><div className="section-title"><div><p className="kicker">Comportamento</p><h2>Base e retorno</h2></div><p>Leitura que amadurece junto do histórico.</p></div><div className="behavior-stack">{data.customerGroups.map((group) => <div className="behavior-item" key={group.title}><span>{group.title}</span><strong>{typeof group.value === "number" ? format(group.value) : group.value}</strong><small>{group.note}</small></div>)}</div></article>
+        <article className="report-card card-half"><div className="section-title"><div><p className="kicker">Comportamento</p><h2>Base e retorno</h2></div><p>Leitura que amadurece junto do histórico.</p></div>{sustainedShare !== null ? <div className="sustained-presence"><div><span>Presença sustentada</span><strong>{sustainedShare.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</strong></div><p>{currentSustained !== null ? `${format(currentSustained)} de ${format(currentUnique ?? 0)} clientes vieram em 2+ dias` : "—"}{previousSustainedShare !== null ? <small className="micro-compare">{deltaText(pointDelta(sustainedShare, previousSustainedShare), " p.p.", comparisonLabel)}</small> : null}</p></div> : null}<div className="behavior-stack">{data.customerGroups.map((group) => <div className="behavior-item" key={group.title}><span>{group.title}</span><strong>{typeof group.value === "number" ? format(group.value) : group.value}</strong><small>{group.note}</small></div>)}</div></article>
 
         <article className="report-card card-full client-intelligence">
           <div className="section-title"><div><p className="kicker">Base operacional</p><h2>Quem está ativo agora</h2></div><p>{customers?.note ?? "A análise de clientes será exibida assim que o histórico estiver disponível."}</p></div>
