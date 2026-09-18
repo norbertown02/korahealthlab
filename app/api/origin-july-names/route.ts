@@ -1,57 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Client } from "pg";
 
 export const dynamic = "force-dynamic";
-const REF="ovquzagoddwgqixtmkbr";
-const HOST="aws-0-us-east-2.pooler.supabase.com";
+const BASE="https://ovquzagoddwgqixtmkbr.supabase.co/functions/v1";
 
-function makeUrl(original:string, username:string, port:string) {
-  const url=new URL(original);
-  url.hostname=HOST;
-  url.port=port;
-  url.username=username;
-  return url.toString();
+function collectNames(value: unknown, out:string[] = []) {
+  if (out.length >= 20) return out;
+  if (Array.isArray(value)) {
+    for (const item of value.slice(0,100)) collectNames(item,out);
+    return out;
+  }
+  if (value && typeof value==="object") {
+    for (const [k,v] of Object.entries(value as Record<string,unknown>)) {
+      if (typeof v==="string" && /^(name|nome|member_name|client_name|customer_name|person_name)$/i.test(k)) {
+        out.push(v);
+      } else if (v && typeof v==="object") collectNames(v,out);
+      if(out.length>=20) break;
+    }
+  }
+  return out;
 }
 
-async function test(label:string, connectionString:string) {
-  const client=new Client({
-    connectionString,
-    ssl:{rejectUnauthorized:false},
-    connectionTimeoutMillis:3500,
-    query_timeout:5000
-  });
-  try{
-    await client.connect();
-    const q=await client.query(`
-      select current_user, current_database(),
-             (select count(*) from information_schema.tables where table_name='fact_entries') as fact_entries_tables
-    `);
-    return {label,ok:true,check:q.rows[0]};
-  }catch(e){
-    return {label,ok:false,error:e instanceof Error?e.message:String(e)};
-  }finally{
-    try{await client.end();}catch{}
+async function probe(fn:string, secret:string) {
+  try {
+    const r=await fetch(`${BASE}/${fn}?start=2026-07-01&end=2026-07-31&month=2026-07&origin=ClassPass`,{
+      headers:{"x-kora-dashboard-secret":secret},
+      cache:"no-store"
+    });
+    const text=await r.text();
+    let json:any=null; try{json=JSON.parse(text)}catch{}
+    return {
+      fn,
+      status:r.status,
+      ok:r.ok,
+      size:text.length,
+      keys:json&&typeof json==="object"?Object.keys(json):[],
+      names:json?collectNames(json):[],
+      error:!r.ok?text.slice(0,160):null
+    };
+  } catch(e) {
+    return {fn,status:0,ok:false,error:e instanceof Error?e.message:String(e)};
   }
 }
 
 export async function GET(req:NextRequest){
   if(req.nextUrl.searchParams.get("key")!=="origin-july-names-20260918-a92c") return NextResponse.json({error:"not found"},{status:404});
-  const original=process.env.POSTGRES_URL;
-  if(!original) return NextResponse.json({error:"missing POSTGRES_URL"},{status:500});
-  const originalUser=new URL(original).username;
-  const candidates=[
-    ["session-ref",`postgres.${REF}`,"5432"],
-    ["transaction-ref",`postgres.${REF}`,"6543"],
-    ["session-original",originalUser,"5432"],
-    ["transaction-original",originalUser,"6543"],
-    ["session-ref-only",REF,"5432"],
-    ["transaction-ref-only",REF,"6543"]
-  ] as const;
-  const results=[];
-  for(const [label,user,port] of candidates){
-    const result=await test(label,makeUrl(original,user,port));
-    results.push(result);
-    if(result.ok) break;
-  }
-  return NextResponse.json({results});
+  const secret=process.env.KORA_DASHBOARD_READ_SECRET;
+  if(!secret) return NextResponse.json({error:"missing secret"},{status:500});
+  const names=[
+    "kora-teacher-metrics",
+    "kora-people","kora-members","kora-member-insights",
+    "kora-client-details","kora-client-detail","kora-client-list",
+    "kora-participants","kora-class-participants",
+    "kora-origin-insights","kora-origin-details","kora-entry-origins","kora-client-origins",
+    "kora-retention-details","kora-client-intelligence-detail","kora-client-intelligence-debug",
+    "kora-entries","kora-sales","kora-data","kora-audit","kora-debug",
+    "kora-evo-sync","kora-sync","kora-dashboard-sync"
+  ];
+  const results=await Promise.all(names.map(name=>probe(name,secret)));
+  return NextResponse.json({results:results.filter(r=>r.status!==404)});
 }
