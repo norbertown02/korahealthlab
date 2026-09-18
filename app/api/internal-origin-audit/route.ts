@@ -265,6 +265,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (request.nextUrl.searchParams.get("mode") === "swagger") {
+    const candidates = ["/swagger/v1/swagger.json", "/swagger/swagger.json"];
+    const results: Array<Record<string, unknown>> = [];
+    for (const path of candidates) {
+      try {
+        const response = await fetch(`${EVO_BASE}${path}`, { headers: evoHeaders(), cache: "no-store" });
+        const text = await response.text();
+        let matchedPaths: string[] = [];
+        try {
+          const json = JSON.parse(text) as { paths?: Record<string, unknown> };
+          matchedPaths = Object.keys(json.paths ?? {}).filter((key) =>
+            /(class|participant|membership|schedule|agenda|reservation|booking|member)/i.test(key)
+          );
+        } catch {}
+        results.push({ path, status: response.status, matchedPaths, sample: text.slice(0, 120) });
+      } catch (error) {
+        results.push({ path, error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+    return NextResponse.json({ results });
+  }
+
   const start = request.nextUrl.searchParams.get("start") ?? "2026-06-01";
   const end = request.nextUrl.searchParams.get("end") ?? "2026-09-30";
   let entries: EvoEntry[] = [];
@@ -275,7 +297,7 @@ export async function GET(request: NextRequest) {
     [entries, sales, salesHistory, aggregators] = await Promise.all([
       auditEntries(start, end),
       auditSales(start, end),
-      auditSales("2026-04-01", end),
+      auditSales("2026-01-01", end),
       auditAggregators(start, end)
     ]);
   } catch (error) {
@@ -345,6 +367,7 @@ export async function GET(request: NextRequest) {
     aggregatorsByMonth: aggByMonth,
     entryTypes: grouped(entries.map((r)=>r.entryType)),
     devices: grouped(entries.map((r)=>r.device)),
+    aggregatorStatuses: grouped(aggregators.map((r)=>r.status)),
     entrySignatures: [...entrySignatures.values()].sort((a,b)=>b.count-a.count).slice(0,30),
     saleItemLabels: grouped(saleItemLabels).slice(0,100),
     saleSignatures: [...saleSignatures.values()].sort((a,b)=>b.count-a.count).slice(0,30),
