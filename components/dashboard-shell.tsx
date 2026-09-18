@@ -148,12 +148,12 @@ export function DashboardShell({
             const delta = relativeDelta(item.value, previousValue);
             return (
               <div className="origin-row" key={item.label}>
-                <div className="origin-main">
-                  <span>{item.label}</span>
-                  <div className="origin-track"><i style={{ width: `${(item.value / maxOrigin) * 100}%`, backgroundColor: item.tone }} /></div>
+                <span>{item.label}</span>
+                <div><i style={{ width: `${(item.value / maxOrigin) * 100}%`, backgroundColor: item.tone }} /></div>
+                <span className="origin-stat">
                   <b>{format(item.value)}</b>
-                </div>
-                {previousValue !== undefined ? <small className="origin-compare">{deltaText(delta, "%", comparisonLabel)}</small> : null}
+                  {previousValue !== undefined ? <small className={`origin-delta ${delta !== null && delta < 0 ? "negative" : "positive"}`}>{delta === null ? "novo" : `${delta > 0 ? "+" : ""}${delta.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}</small> : null}
+                </span>
               </div>
             );
           })}</div>
@@ -164,6 +164,11 @@ export function DashboardShell({
           current={data.weekday}
           currentStart={start}
           currentEnd={observedEnd}
+          previous={previousPeriod ? {
+            weekday: previousPeriod.data.weekday,
+            start: previousPeriod.start,
+            end: previousPeriod.end
+          } : null}
         />
 
         <article className="report-card card-full weekly-trend-card">
