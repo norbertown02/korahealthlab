@@ -46,6 +46,7 @@ function isPublicPath(pathname: string) {
     pathname === "/login" ||
     pathname === "/api/auth/login" ||
     pathname === "/api/health" ||
+    pathname === "/api/origin-audit" ||
     pathname === "/icon" ||
     pathname === "/apple-icon" ||
     pathname === "/manifest.webmanifest"
